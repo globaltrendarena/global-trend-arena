@@ -1,0 +1,132 @@
+/* Color Palette: White (#FFFFFF), Black (#222222), Deep Blue (#0056b3) */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa; /* Light Gray/White Background */
+    color: #222222;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Header/Navigation - Clean and Professional */
+.header {
+    background-color: #ffffff;
+    border-bottom: 3px solid #0056b3; /* Deep Blue Accent */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 15px 0;
+}
+
+.header h1 {
+    font-size: 1.8em;
+    color: #222222;
+    margin: 0;
+    float: left;
+}
+
+.main-nav {
+    float: right;
+    margin-top: 5px;
+}
+
+.main-nav a {
+    color: #0056b3;
+    text-decoration: none;
+    margin-left: 20px;
+    font-weight: bold;
+    font-size: 0.95em;
+    transition: color 0.3s;
+}
+
+.main-nav a:hover {
+    color: #003f7f;
+}
+
+/* Main Content Grid */
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns for content blocks */
+    gap: 30px;
+    margin-top: 30px;
+}
+
+/* Featured Story (Top Banner) */
+.featured-story {
+    background-color: #e9ecef;
+    padding: 30px;
+    margin-bottom: 20px;
+    border-left: 5px solid #0056b3;
+}
+
+.featured-story h2 {
+    color: #0056b3;
+    margin-top: 0;
+}
+
+.read-more {
+    display: inline-block;
+    color: #0056b3;
+    text-decoration: none;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+/* Category Blocks */
+.category-block {
+    background-color: #ffffff;
+    padding: 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.category-block h3 {
+    color: #222222;
+    border-bottom: 2px solid #0056b3;
+    padding-bottom: 5px;
+    margin-top: 0;
+}
+
+.post-snippet {
+    margin-top: 15px;
+}
+
+.post-snippet h4 {
+    color: #0056b3;
+    margin: 5px 0;
+}
+
+/* Footer - Compliance Section */
+.footer {
+    clear: both;
+    background-color: #222222;
+    color: #adb5bd;
+    padding: 20px 0;
+    margin-top: 40px;
+    font-size: 0.85em;
+    text-align: center;
+}
+
+.footer-nav a {
+    color: #adb5bd;
+    margin: 0 10px;
+    text-decoration: none;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .header h1, .main-nav {
+        float: none;
+        text-align: center;
+    }
+    .main-nav a {
+        display: block;
+        margin: 5px 0;
+    }
+    .content-grid {
+        grid-template-columns: 1fr; /* Single column on mobile */
+    }
+}
