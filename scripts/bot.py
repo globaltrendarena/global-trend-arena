@@ -37,7 +37,7 @@ wcapi = API(
     version="wc/v3"
 )
 
-# Gemini API Fallback Engine (Robust Version)
+# Gemini API Fallback Engine (Stable standard SDK)
 def generate_with_gemini_fallback(prompt_text):
     api_keys = [
         os.getenv("GEMINI_API_KEY_1"),
