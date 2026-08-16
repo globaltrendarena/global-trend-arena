@@ -3,7 +3,8 @@ import json
 import logging
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import google.generativeai as genai
+from google import genai
+from google.genai.errors import APIError
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 from woocommerce import API
@@ -11,12 +12,12 @@ from woocommerce import API
 # Logging Setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Dummy Server to pass Render Health Check
+# Dummy Server for Render Port Check
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot is live!")
+        self.wfile.write(b"Bot is live and healthy!")
 
 def run_dummy_server():
     port = int(os.getenv("PORT", 8080))
@@ -37,7 +38,7 @@ wcapi = API(
     version="wc/v3"
 )
 
-# Gemini API Fallback Engine (Stable standard SDK)
+# Gemini API Fallback Engine using official google-genai SDK
 def generate_with_gemini_fallback(prompt_text):
     api_keys = [
         os.getenv("GEMINI_API_KEY_1"),
@@ -51,15 +52,19 @@ def generate_with_gemini_fallback(prompt_text):
 
     for index, key in enumerate(api_keys, start=1):
         try:
-            genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(prompt_text)
+            client = genai.Client(api_key=key)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt_text
+            )
             logging.info(f"Successfully generated using Gemini Key #{index}")
             return response.text
+        except APIError as e:
+            logging.warning(f"Gemini Key #{index} API error: {e}")
         except Exception as e:
-            logging.warning(f"Gemini Key #{index} failed: {e}")
+            logging.warning(f"Unexpected error with Key #{index}: {e}")
             
-    raise Exception("❌ All Gemini API Keys failed or invalid. Please check Google AI Studio keys.")
+    raise Exception("❌ All Gemini API Keys failed. Check key validity on Google AI Studio.")
 
 # /start Command Handler
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,7 +78,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # System Status Check Command
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Bot is online & connected to GitHub Secrets and WooCommerce!")
+    await update.message.reply_text("✅ Bot is online & connected to WooCommerce!")
 
 # Main Message Processing Routine
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -85,9 +90,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         ai_prompt = f"""
         Create a product entry for an e-commerce store based on this instruction: "{user_prompt}".
-        Provide output ONLY in valid JSON format without markdown ticks with keys:
+        Provide output ONLY in valid JSON format with keys:
         "name" (product title),
-        "regular_price" (estimated numeric price string e.g. "3500"),
+        "regular_price" (numeric price string, e.g., "3500"),
         "short_description" (2-3 lines catchy description),
         "description" (detailed SEO-friendly description)
         """
@@ -97,7 +102,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clean_json_str = raw_ai_response.replace("```json", "").replace("```", "").strip()
         product_data = json.loads(clean_json_str)
 
-        await context.bot.send_message(chat_id=chat_id, text="🔄 Uploading product to Inaaya's Mart via WooCommerce API...")
+        await context.bot.send_message(chat_id=chat_id, text="🔄 Uploading product to WooCommerce...")
 
         woo_payload = {
             "name": product_data.get("name", "New Product"),
