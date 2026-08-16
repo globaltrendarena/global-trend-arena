@@ -3,8 +3,7 @@ import json
 import logging
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from google import genai
-from google.genai.errors import APIError
+import google.generativeai as genai
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 from woocommerce import API
@@ -38,33 +37,29 @@ wcapi = API(
     version="wc/v3"
 )
 
-# Gemini API Fallback Engine
+# Gemini API Fallback Engine (Robust Version)
 def generate_with_gemini_fallback(prompt_text):
     api_keys = [
         os.getenv("GEMINI_API_KEY_1"),
         os.getenv("GEMINI_API_KEY_2"),
         os.getenv("GEMINI_API_KEY_3")
     ]
-    api_keys = [k for k in api_keys if k]
+    api_keys = [k.strip() for k in api_keys if k and k.strip()]
 
     if not api_keys:
-        raise ValueError("❌ No valid Gemini API Keys found in Environment!")
+        raise ValueError("❌ No valid Gemini API Keys found in Environment Variables!")
 
     for index, key in enumerate(api_keys, start=1):
         try:
-            client = genai.Client(api_key=key)
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt_text
-            )
+            genai.configure(api_key=key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            response = model.generate_content(prompt_text)
             logging.info(f"Successfully generated using Gemini Key #{index}")
             return response.text
-        except APIError as e:
-            logging.warning(f"Gemini Key #{index} rate limited or failed: {e}")
         except Exception as e:
-            logging.warning(f"Unexpected error with Key #{index}: {e}")
+            logging.warning(f"Gemini Key #{index} failed: {e}")
             
-    raise Exception("❌ All Gemini API Keys failed or rate limits exceeded.")
+    raise Exception("❌ All Gemini API Keys failed or invalid. Please check Google AI Studio keys.")
 
 # /start Command Handler
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -90,9 +85,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         ai_prompt = f"""
         Create a product entry for an e-commerce store based on this instruction: "{user_prompt}".
-        Provide output ONLY in valid JSON format with keys:
+        Provide output ONLY in valid JSON format without markdown ticks with keys:
         "name" (product title),
-        "regular_price" (estimated numeric price string e.g. "1250"),
+        "regular_price" (estimated numeric price string e.g. "3500"),
         "short_description" (2-3 lines catchy description),
         "description" (detailed SEO-friendly description)
         """
@@ -134,7 +129,6 @@ if __name__ == '__main__':
     if not TELEGRAM_TOKEN:
         raise ValueError("TELEGRAM_BOT_TOKEN is missing!")
     
-    # Start Dummy Web Server in Background for Render
     threading.Thread(target=run_dummy_server, daemon=True).start()
         
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
