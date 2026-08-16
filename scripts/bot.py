@@ -1,170 +1,129 @@
-{
-  "nbformat": 4,
-  "nbformat_minor": 0,
-  "metadata": {
-    "colab": {
-      "provenance": [],
-      "authorship_tag": "ABX9TyNPbWBx/0rFGZdGkiadq3aP",
-      "include_colab_link": true
-    },
-    "kernelspec": {
-      "name": "python3",
-      "display_name": "Python 3"
-    },
-    "language_info": {
-      "name": "python"
-    }
-  },
-  "cells": [
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "id": "view-in-github",
-        "colab_type": "text"
-      },
-      "source": [
-        "<a href=\"https://colab.research.google.com/github/globaltrendarena/global-trend-arena/blob/main/scripts/bot.py\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "id": "XC7wtZMpwELB"
-      },
-      "outputs": [],
-      "source": [
-        "import os\n",
-        "import json\n",
-        "import logging\n",
-        "from google import genai\n",
-        "from google.genai.errors import APIError\n",
-        "from telegram import Update\n",
-        "from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters\n",
-        "from woocommerce import API\n",
-        "\n",
-        "# Logging Setup\n",
-        "logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)\n",
-        "\n",
-        "# Environment Variables / GitHub Secrets থেকে ক্রেডেনশিয়াল লোড\n",
-        "TELEGRAM_TOKEN = os.getenv(\"TELEGRAM_BOT_TOKEN\")\n",
-        "WOO_URL = os.getenv(\"WOO_SITE_URL\")\n",
-        "WOO_KEY = os.getenv(\"WOO_CONSUMER_KEY\")\n",
-        "WOO_SECRET = os.getenv(\"WOO_CONSUMER_SECRET\")\n",
-        "\n",
-        "# WooCommerce API Setup\n",
-        "wcapi = API(\n",
-        "    url=WOO_URL,\n",
-        "    consumer_key=WOO_KEY,\n",
-        "    consumer_secret=WOO_SECRET,\n",
-        "    version=\"wc/v3\"\n",
-        ")\n",
-        "\n",
-        "# Gemini API Fallback Engine Function\n",
-        "def generate_with_gemini_fallback(prompt_text):\n",
-        "    api_keys = [\n",
-        "        os.getenv(\"GEMINI_API_KEY_1\"),\n",
-        "        os.getenv(\"GEMINI_API_KEY_2\"),\n",
-        "        os.getenv(\"GEMINI_API_KEY_3\")\n",
-        "    ]\n",
-        "    api_keys = [k for k in api_keys if k] # Filter out None values\n",
-        "\n",
-        "    for index, key in enumerate(api_keys, start=1):\n",
-        "        try:\n",
-        "            client = genai.Client(api_key=key)\n",
-        "            response = client.models.generate_content(\n",
-        "                model='gemini-2.5-flash',\n",
-        "                contents=prompt_text\n",
-        "            )\n",
-        "            logging.info(f\"Successfully generated using Gemini Key #{index}\")\n",
-        "            return response.text\n",
-        "        except APIError as e:\n",
-        "            logging.warning(f\"Gemini Key #{index} rate limited or failed: {e}\")\n",
-        "        except Exception as e:\n",
-        "            logging.warning(f\"Unexpected error with Key #{index}: {e}\")\n",
-        "\n",
-        "    raise Exception(\"❌ All Gemini API Keys failed or rate limits exceeded.\")\n",
-        "\n",
-        "# /start Command Handler\n",
-        "async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):\n",
-        "    welcome_text = (\n",
-        "        \"👋 Welcome to Inaaya's Mart AI Control Center!\\n\\n\"\n",
-        "        \"Available Commands:\\n\"\n",
-        "        \"1. Direct text send: Send any product name/idea to auto-generate & post to WooCommerce as draft.\\n\"\n",
-        "        \"2. /status - Check system connectivity.\"\n",
-        "    )\n",
-        "    await update.message.reply_text(welcome_text)\n",
-        "\n",
-        "# System Status Check Command\n",
-        "async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):\n",
-        "    await update.message.reply_text(\"✅ Bot is online & connected to GitHub Secrets and WooCommerce!\")\n",
-        "\n",
-        "# Main Message Processing Routine\n",
-        "async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):\n",
-        "    user_prompt = update.message.text\n",
-        "    chat_id = update.effective_chat.id\n",
-        "\n",
-        "    await context.bot.send_message(chat_id=chat_id, text=\"⏳ Processing your request with Gemini AI...\")\n",
-        "\n",
-        "    try:\n",
-        "        # 1. Prompt formatting for structured JSON output\n",
-        "        ai_prompt = f\"\"\"\n",
-        "        Create a product entry for an e-commerce store based on this instruction: \"{user_prompt}\".\n",
-        "        Provide output ONLY in valid JSON format with keys:\n",
-        "        \"name\" (product title),\n",
-        "        \"regular_price\" (estimated numeric price string e.g. \"1250\"),\n",
-        "        \"short_description\" (2-3 lines catchy description),\n",
-        "        \"description\" (detailed SEO-friendly description)\n",
-        "        \"\"\"\n",
-        "\n",
-        "        raw_ai_response = generate_with_gemini_fallback(ai_prompt)\n",
-        "\n",
-        "        # Sanitize JSON string from Markdown fencing if present\n",
-        "        clean_json_str = raw_ai_response.replace(\"```json\", \"\").replace(\"```\", \"\").strip()\n",
-        "        product_data = json.loads(clean_json_str)\n",
-        "\n",
-        "        await context.bot.send_message(chat_id=chat_id, text=\"🔄 Uploading product to Inaaya's Mart via WooCommerce API...\")\n",
-        "\n",
-        "        # 2. Construct WooCommerce Product Payload\n",
-        "        woo_payload = {\n",
-        "            \"name\": product_data.get(\"name\", \"New Product\"),\n",
-        "            \"type\": \"simple\",\n",
-        "            \"regular_price\": str(product_data.get(\"regular_price\", \"0\")),\n",
-        "            \"description\": product_data.get(\"description\", \"\"),\n",
-        "            \"short_description\": product_data.get(\"short_description\", \"\"),\n",
-        "            \"status\": \"draft\" # Saved safely as draft\n",
-        "        }\n",
-        "\n",
-        "        # 3. Post to WooCommerce\n",
-        "        res = wcapi.post(\"products\", woo_payload)\n",
-        "\n",
-        "        if res.status_code in [200, 201]:\n",
-        "            created_prod = res.json()\n",
-        "            prod_id = created_prod.get(\"id\")\n",
-        "            prod_name = created_prod.get(\"name\")\n",
-        "            await context.bot.send_message(\n",
-        "                chat_id=chat_id,\n",
-        "                text=f\"✅ **Successfully Done!**\\n\\nProduct **{prod_name}** (ID: {prod_id}) has been created as a Draft in WooCommerce.\"\n",
-        "            )\n",
-        "        else:\n",
-        "            await context.bot.send_message(chat_id=chat_id, text=f\"❌ WooCommerce API Error: Status Code {res.status_code}\")\n",
-        "\n",
-        "    except Exception as e:\n",
-        "        await context.bot.send_message(chat_id=chat_id, text=f\"❌ Task Failed: {str(e)}\")\n",
-        "\n",
-        "# Application Startup\n",
-        "if __name__ == '__main__':\n",
-        "    if not TELEGRAM_TOKEN:\n",
-        "        raise ValueError(\"TELEGRAM_BOT_TOKEN is not set in Environment Secrets!\")\n",
-        "\n",
-        "    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()\n",
-        "    app.add_handler(CommandHandler(\"start\", start_command))\n",
-        "    app.add_handler(CommandHandler(\"status\", status_command))\n",
-        "    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))\n",
-        "\n",
-        "    print(\"Telegram Central Bot is running...\")\n",
-        "    app.run_polling()"
-      ]
-    }
-  ]
-}
+import os
+import json
+import logging
+from google import genai
+from google.genai.errors import APIError
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from woocommerce import API
+
+# Logging Setup
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# Environment Variables (GitHub Secrets থেকে তথ্য নিবে)
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+WOO_URL = os.getenv("WOO_SITE_URL")
+WOO_KEY = os.getenv("WOO_CONSUMER_KEY")
+WOO_SECRET = os.getenv("WOO_CONSUMER_SECRET")
+
+# WooCommerce API Setup
+wcapi = API(
+    url=WOO_URL,
+    consumer_key=WOO_KEY,
+    consumer_secret=WOO_SECRET,
+    version="wc/v3"
+)
+
+# Gemini API Fallback Engine Function
+def generate_with_gemini_fallback(prompt_text):
+    api_keys = [
+        os.getenv("GEMINI_API_KEY_1"),
+        os.getenv("GEMINI_API_KEY_2"),
+        os.getenv("GEMINI_API_KEY_3")
+    ]
+    api_keys = [k for k in api_keys if k]
+
+    if not api_keys:
+        raise ValueError("❌ No valid Gemini API Keys found in Environment!")
+
+    for index, key in enumerate(api_keys, start=1):
+        try:
+            client = genai.Client(api_key=key)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt_text
+            )
+            logging.info(f"Successfully generated using Gemini Key #{index}")
+            return response.text
+        except APIError as e:
+            logging.warning(f"Gemini Key #{index} rate limited or failed: {e}")
+        except Exception as e:
+            logging.warning(f"Unexpected error with Key #{index}: {e}")
+            
+    raise Exception("❌ All Gemini API Keys failed or rate limits exceeded.")
+
+# /start Command Handler
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    welcome_text = (
+        "👋 Welcome to Inaaya's Mart AI Control Center!\n\n"
+        "Available Commands:\n"
+        "1. Send product idea/text: Auto-generates & posts to WooCommerce as draft.\n"
+        "2. /status - Check system connectivity."
+    )
+    await update.message.reply_text(welcome_text)
+
+# System Status Check Command
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ Bot is online & connected to GitHub Secrets and WooCommerce!")
+
+# Main Message Processing Routine
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_prompt = update.message.text
+    chat_id = update.effective_chat.id
+    
+    await context.bot.send_message(chat_id=chat_id, text="⏳ Processing your request with Gemini AI...")
+
+    try:
+        ai_prompt = f"""
+        Create a product entry for an e-commerce store based on this instruction: "{user_prompt}".
+        Provide output ONLY in valid JSON format with keys:
+        "name" (product title),
+        "regular_price" (estimated numeric price string e.g. "1250"),
+        "short_description" (2-3 lines catchy description),
+        "description" (detailed SEO-friendly description)
+        """
+
+        raw_ai_response = generate_with_gemini_fallback(ai_prompt)
+
+        clean_json_str = raw_ai_response.replace("```json", "").replace("```", "").strip()
+        product_data = json.loads(clean_json_str)
+
+        await context.bot.send_message(chat_id=chat_id, text="🔄 Uploading product to Inaaya's Mart via WooCommerce API...")
+
+        woo_payload = {
+            "name": product_data.get("name", "New Product"),
+            "type": "simple",
+            "regular_price": str(product_data.get("regular_price", "0")),
+            "description": product_data.get("description", ""),
+            "short_description": product_data.get("short_description", ""),
+            "status": "draft"
+        }
+
+        res = wcapi.post("products", woo_payload)
+
+        if res.status_code in [200, 201]:
+            created_prod = res.json()
+            prod_id = created_prod.get("id")
+            prod_name = created_prod.get("name")
+            await context.bot.send_message(
+                chat_id=chat_id, 
+                text=f"✅ **Successfully Done!**\n\nProduct **{prod_name}** (ID: {prod_id}) has been created as a Draft in WooCommerce."
+            )
+        else:
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ WooCommerce API Error: Status Code {res.status_code}")
+
+    except Exception as e:
+        await context.bot.send_message(chat_id=chat_id, text=f"❌ Task Failed: {str(e)}")
+
+# Application Startup
+if __name__ == '__main__':
+    if not TELEGRAM_TOKEN:
+        raise ValueError("TELEGRAM_BOT_TOKEN is missing!")
+        
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("status", status_command))
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    
+    print("Telegram Central Bot is running...")
+    app.run_polling()
