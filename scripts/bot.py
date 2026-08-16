@@ -1,6 +1,8 @@
 import os
 import json
 import logging
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from google import genai
 from google.genai.errors import APIError
 from telegram import Update
@@ -10,7 +12,19 @@ from woocommerce import API
 # Logging Setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Environment Variables (GitHub Secrets থেকে তথ্য নিবে)
+# Dummy Server to pass Render Health Check
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is live!")
+
+def run_dummy_server():
+    port = int(os.getenv("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
+
+# Environment Variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 WOO_URL = os.getenv("WOO_SITE_URL")
 WOO_KEY = os.getenv("WOO_CONSUMER_KEY")
@@ -24,7 +38,7 @@ wcapi = API(
     version="wc/v3"
 )
 
-# Gemini API Fallback Engine Function
+# Gemini API Fallback Engine
 def generate_with_gemini_fallback(prompt_text):
     api_keys = [
         os.getenv("GEMINI_API_KEY_1"),
@@ -119,6 +133,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     if not TELEGRAM_TOKEN:
         raise ValueError("TELEGRAM_BOT_TOKEN is missing!")
+    
+    # Start Dummy Web Server in Background for Render
+    threading.Thread(target=run_dummy_server, daemon=True).start()
         
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start_command))
