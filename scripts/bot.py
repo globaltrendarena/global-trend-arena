@@ -10,12 +10,12 @@ from woocommerce import API
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Dummy Server for Render Web Service Port Check
+# Dummy Server to pass Render Web Service Port Check
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot is active!")
+        self.wfile.write(b"Bot is live!")
 
 def run_dummy_server():
     port = int(os.getenv("PORT", 8080))
@@ -43,25 +43,25 @@ def generate_product_with_gemini(prompt_text):
     
     ai_prompt = f"""
     Create an e-commerce product entry based on: "{prompt_text}".
-    Output MUST be a single raw JSON object without markdown ticks or pre-text.
+    Output MUST be a single raw JSON object without markdown formatting.
     JSON structure:
     {{
         "name": "Product title",
         "regular_price": "3500",
         "short_description": "Catchy short description",
-        "description": "Detailed SEO description"
+        "description": "Detailed description"
     }}
     """
 
-    # Updated model name to gemini-1.5-flash
+    # Official latest fast Flash model
     response = client.models.generate_content(
-        model='gemini-1.5-flash',
+        model='gemini-2.0-flash',
         contents=ai_prompt
     )
     return response.text
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Welcome! Send product text to auto-post as WooCommerce Draft.")
+    await update.message.reply_text("👋 Welcome! Send product details to create a draft in WooCommerce.")
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot is online & running.")
@@ -75,7 +75,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         raw_response = generate_product_with_gemini(user_prompt)
         
-        # Strip potential markdown formatting from AI output
+        # Clean markdown wrappers if returned
         clean_json = raw_response.replace("```json", "").replace("```", "").strip()
         product_data = json.loads(clean_json)
 
