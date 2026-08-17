@@ -4,33 +4,29 @@ import logging
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from google import genai
-from google.genai.errors import APIError
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 from woocommerce import API
 
-# Logging Setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Dummy Server for Render Port Check
+# Dummy Server to pass Render Web Service Port Check
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot is live and healthy!")
+        self.wfile.write(b"Bot is live!")
 
 def run_dummy_server():
     port = int(os.getenv("PORT", 8080))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     server.serve_forever()
 
-# Environment Variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 WOO_URL = os.getenv("WOO_SITE_URL")
 WOO_KEY = os.getenv("WOO_CONSUMER_KEY")
 WOO_SECRET = os.getenv("WOO_CONSUMER_SECRET")
 
-# WooCommerce API Setup
 wcapi = API(
     url=WOO_URL,
     consumer_key=WOO_KEY,
@@ -38,69 +34,44 @@ wcapi = API(
     version="wc/v3"
 )
 
-# Gemini API Fallback Engine using official google-genai SDK
-def generate_with_gemini_fallback(prompt_text):
-    api_keys = [
-        os.getenv("GEMINI_API_KEY_1"),
-        os.getenv("GEMINI_API_KEY_2"),
-        os.getenv("GEMINI_API_KEY_3")
-    ]
-    api_keys = [k.strip() for k in api_keys if k and k.strip()]
+def generate_product_with_gemini(prompt_text):
+    api_key = os.getenv("GEMINI_API_KEY_1")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY_1 is missing in Environment Variables!")
 
-    if not api_keys:
-        raise ValueError("❌ No valid Gemini API Keys found in Environment Variables!")
+    client = genai.Client(api_key=api_key.strip())
+    
+    ai_prompt = f"""
+    Create an e-commerce product based on: "{prompt_text}".
+    You must output a single JSON object with these exact keys:
+    - "name": Product title
+    - "regular_price": Price as a numeric string (e.g. "3500")
+    - "short_description": 2-3 sentence summary
+    - "description": Detailed product description
+    """
 
-    for index, key in enumerate(api_keys, start=1):
-        try:
-            client = genai.Client(api_key=key)
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt_text
-            )
-            logging.info(f"Successfully generated using Gemini Key #{index}")
-            return response.text
-        except APIError as e:
-            logging.warning(f"Gemini Key #{index} API error: {e}")
-        except Exception as e:
-            logging.warning(f"Unexpected error with Key #{index}: {e}")
-            
-    raise Exception("❌ All Gemini API Keys failed. Check key validity on Google AI Studio.")
-
-# /start Command Handler
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_text = (
-        "👋 Welcome to Inaaya's Mart AI Control Center!\n\n"
-        "Available Commands:\n"
-        "1. Send product idea/text: Auto-generates & posts to WooCommerce as draft.\n"
-        "2. /status - Check system connectivity."
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=ai_prompt,
+        config={'response_mime_type': 'application/json'}
     )
-    await update.message.reply_text(welcome_text)
+    return response.text
 
-# System Status Check Command
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("👋 Welcome! Send me product details to upload to WooCommerce as a Draft.")
+
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Bot is online & connected to WooCommerce!")
+    await update.message.reply_text("✅ Bot is online & running.")
 
-# Main Message Processing Routine
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_prompt = update.message.text
     chat_id = update.effective_chat.id
     
-    await context.bot.send_message(chat_id=chat_id, text="⏳ Processing your request with Gemini AI...")
+    await context.bot.send_message(chat_id=chat_id, text="⏳ Processing product details with Gemini AI...")
 
     try:
-        ai_prompt = f"""
-        Create a product entry for an e-commerce store based on this instruction: "{user_prompt}".
-        Provide output ONLY in valid JSON format with keys:
-        "name" (product title),
-        "regular_price" (numeric price string, e.g., "3500"),
-        "short_description" (2-3 lines catchy description),
-        "description" (detailed SEO-friendly description)
-        """
-
-        raw_ai_response = generate_with_gemini_fallback(ai_prompt)
-
-        clean_json_str = raw_ai_response.replace("```json", "").replace("```", "").strip()
-        product_data = json.loads(clean_json_str)
+        raw_json_response = generate_product_with_gemini(user_prompt)
+        product_data = json.loads(raw_json_response)
 
         await context.bot.send_message(chat_id=chat_id, text="🔄 Uploading product to WooCommerce...")
 
@@ -121,7 +92,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             prod_name = created_prod.get("name")
             await context.bot.send_message(
                 chat_id=chat_id, 
-                text=f"✅ **Successfully Done!**\n\nProduct **{prod_name}** (ID: {prod_id}) has been created as a Draft in WooCommerce."
+                text=f"✅ **Success!**\n\nProduct **{prod_name}** (ID: {prod_id}) created as Draft in WooCommerce."
             )
         else:
             await context.bot.send_message(chat_id=chat_id, text=f"❌ WooCommerce API Error: Status Code {res.status_code}")
@@ -129,7 +100,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await context.bot.send_message(chat_id=chat_id, text=f"❌ Task Failed: {str(e)}")
 
-# Application Startup
 if __name__ == '__main__':
     if not TELEGRAM_TOKEN:
         raise ValueError("TELEGRAM_BOT_TOKEN is missing!")
