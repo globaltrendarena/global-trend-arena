@@ -47,7 +47,7 @@ def call_gemini_with_fallback(prompt):
     ]
     api_keys = [k.strip() for k in api_keys if k and k.strip()]
 
-    # Corrected Model Priority: 3.5-flash-lite -> 3.6-flash -> 3.1-pro
+    # Priority: 3.5-flash-lite -> 3.6-flash -> 3.1-pro
     models = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-pro']
 
     for key in api_keys:
@@ -77,7 +77,7 @@ def parse_user_intent_with_gemini(user_text):
 
     CRITICAL RULE: If the input contains words like "কিওয়ার্ড", "এসইও", "সিপিসি", "CPC", "তালিকা", "সিলেক্ট", return "seo_advice". DO NOT return "where_searched".
 
-    Return ONLY a JSON response format:
+    Return ONLY raw JSON block without markdown tags:
     {{"intent": "seo_advice" | "where_searched" | "list_products" | "general_ai"}}
     """
     return call_gemini_with_fallback(prompt)
@@ -97,7 +97,71 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         raw_response = parse_user_intent_with_gemini(user_prompt)
+        
+        # Clean potential response wrappers safely
         clean_json = raw_response.strip()
-        if clean_json.startswith("```"):
-            clean_json = clean_json.split("\n", 1)[1]
-        if clean_json.endswith("
+        if "{" in clean_json and "}" in clean_json:
+            clean_json = clean_json[clean_json.find("{"):clean_json.rfind("}")+1]
+            
+        data = json.loads(clean_json)
+        intent = data.get("intent", "general_ai")
+
+        # 1. SEO & High CPC Keyword Strategy
+        if intent == "seo_advice":
+            await context.bot.send_message(chat_id=chat_id, text="🔍 WooCommerce প্রোডাক্ট ও Google Trends ডাটা বিশ্লেষণ করে High-CPC SEO কিওয়ার্ড রিসার্চ করা হচ্ছে...")
+            res = wcapi.get("products", params={"per_page": 5, "status": "publish"})
+            
+            if res.status_code == 200:
+                products = res.json()
+                product_list = [f"- {p['name']}" for p in products]
+                products_str = "\n".join(product_list)
+                
+                seo_trends = get_seo_keywords_for_products([p['name'] for p in products])
+                
+                seo_prompt = f"""
+                You are an Expert E-commerce SEO and High-CPC Keyword Strategist.
+                The user asked: "{user_prompt}"
+
+                Published WooCommerce products:
+                {products_str}
+
+                Raw Trends Data for related queries:
+                {json.dumps(seo_trends)}
+
+                Please generate a structured SEO keyword strategy in clear Bangla:
+                1. Main Target Keywords for each product based on Google Trends.
+                2. High-CPC Countries Search Intent & Long-tail Keywords.
+                3. Buyer-intent Search Queries for maximum conversions.
+                Use bullet points and clear formatting.
+                """
+                
+                ai_text = call_gemini_with_fallback(seo_prompt)
+                await safe_send_markdown(context, chat_id, ai_text)
+            else:
+                await context.bot.send_message(chat_id=chat_id, text="❌ WooCommerce প্রোডাক্ট ফেচ করতে সমস্যা হয়েছে।")
+
+        # 2. Where Searched & Excel File
+        elif intent == "where_searched":
+            await context.bot.send_message(chat_id=chat_id, text="🌍 Analyzing search locations & generating Excel report...")
+            res = wcapi.get("products", params={"per_page": 5, "status": "publish"})
+            if res.status_code == 200:
+                keywords = [p['name'] for p in res.json()]
+                report_text, excel_path = get_top_regions_and_excel(keywords)
+                
+                await safe_send_markdown(context, chat_id, report_text)
+                if excel_path and os.path.exists(excel_path):
+                    await context.bot.send_document(
+                        chat_id=chat_id, 
+                        document=open(excel_path, 'rb'),
+                        filename="Google_Trends_Regional_Report.xlsx",
+                        caption="📊 Download your detailed Google Trends research Excel sheet."
+                    )
+
+        # 3. List Products
+        elif intent == "list_products":
+            res = wcapi.get("products", params={"per_page": 20, "status": "publish"})
+            if res.status_code == 200:
+                products = res.json()
+                msg = f"📊 **Total Live Published Products: {len(products)}**\n\n"
+                for idx, p in enumerate(products, 1):
+                    msg += f"{idx}. **{p['name']}** (
