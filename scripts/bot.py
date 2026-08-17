@@ -38,18 +38,39 @@ wcapi = API(
     version="wc/v3"
 )
 
-def parse_user_intent_with_gemini(user_text):
-    api_key = os.getenv("GEMINI_API_KEY_1")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY_1 is missing!")
+def call_gemini_with_fallback(prompt):
+    """ Call Gemini with multi-key and multi-model fallback logic """
+    api_keys = [
+        os.getenv("GEMINI_API_KEY_1"),
+        os.getenv("GEMINI_API_KEY_2"),
+        os.getenv("GEMINI_API_KEY_3")
+    ]
+    api_keys = [k.strip() for k in api_keys if k and k.strip()]
 
-    client = genai.Client(api_key=api_key.strip())
-    
+    # Fallback model priority: 2.5-flash-lite -> 2.5-flash -> 1.5-flash
+    models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash']
+
+    for key in api_keys:
+        client = genai.Client(api_key=key)
+        for model in models:
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt
+                )
+                return response.text
+            except Exception as e:
+                logging.warning(f"Failed with Model: {model} using Key ending in ...{key[-4:]}. Error: {e}")
+                continue
+
+    raise Exception("All Gemini API Keys and Fallback models quota exhausted!")
+
+def parse_user_intent_with_gemini(user_text):
     prompt = f"""
     Strictly analyze the user input: "{user_text}".
     You must classify the request into ONLY ONE of the following 4 categories:
 
-    1. "seo_advice": STRICTLY USE THIS if the user asks for SEO keywords, keyword selection, keyword list, SEO strategy, ranking tips, or how to target products (e.g., "কিওয়ার্ড সিলেক্ট", "SEO তালিকা", "কিওয়ার্ড লিস্ট", "কীভাবে এসইও করব").
+    1. "seo_advice": STRICTLY USE THIS if the user asks for SEO keywords, keyword selection, keyword list, SEO strategy, ranking tips, or how to target products.
     2. "where_searched": ONLY use this if the user EXPLICITLY asks WHICH COUNTRY / WHERE a product is searched, or explicitly asks for an Excel sheet download.
     3. "list_products": User asks to view, list, or count WooCommerce products.
     4. "general_ai": General open questions, chat, or advice not matching above.
@@ -59,18 +80,13 @@ def parse_user_intent_with_gemini(user_text):
     Return ONLY a JSON response format:
     {{"intent": "seo_advice" | "where_searched" | "list_products" | "general_ai"}}
     """
-
-    response = client.models.generate_content(
-        model='gemini-3.5-flash-lite',
-        contents=prompt
-    )
-    return response.text
+    return call_gemini_with_fallback(prompt)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_prompt = update.message.text
     chat_id = update.effective_chat.id
     
-    await context.bot.send_message(chat_id=chat_id, text="⏳ Processing with Gemini 3.6 Flash...")
+    await context.bot.send_message(chat_id=chat_id, text="⏳ Processing request...")
 
     try:
         raw_response = parse_user_intent_with_gemini(user_prompt)
@@ -79,7 +95,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         intent = data.get("intent", "general_ai")
 
-        # 1. SEO Keyword List and Strategy
+        # 1. SEO Advice
         if intent == "seo_advice":
             await context.bot.send_message(chat_id=chat_id, text="🔍 WooCommerce প্রোডাক্টের উপর ভিত্তি করে SEO কিওয়ার্ড রিসার্চ করা হচ্ছে...")
             res = wcapi.get("products", params={"per_page": 5, "status": "publish"})
@@ -91,12 +107,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 seo_trends = get_seo_keywords_for_products([p['name'] for p in products])
                 
-                client = genai.Client(api_key=os.getenv("GEMINI_API_KEY_1").strip())
                 seo_prompt = f"""
                 You are an Expert E-commerce SEO Specialist.
                 The user asked: "{user_prompt}"
 
-                Here are the published WooCommerce products from the user's store:
+                Here are the published WooCommerce products:
                 {products_str}
 
                 Raw Trends Data for related queries:
@@ -110,12 +125,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 Use bullet points and bold headers for formatting.
                 """
                 
-                ai_res = client.models.generate_content(model='gemini-3.6-flash', contents=seo_prompt)
-                await context.bot.send_message(chat_id=chat_id, text=ai_res.text, parse_mode='Markdown')
+                ai_text = call_gemini_with_fallback(seo_prompt)
+                await context.bot.send_message(chat_id=chat_id, text=ai_text, parse_mode='Markdown')
             else:
                 await context.bot.send_message(chat_id=chat_id, text="❌ WooCommerce প্রোডাক্ট ফেচ করতে সমস্যা হয়েছে।")
 
-        # 2. Regional Location Search Report & Excel File
+        # 2. Where Searched & Excel File
         elif intent == "where_searched":
             await context.bot.send_message(chat_id=chat_id, text="🌍 Analyzing search locations & generating Excel report...")
             res = wcapi.get("products", params={"per_page": 5, "status": "publish"})
@@ -132,7 +147,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         caption="📊 Download your detailed Google Trends research Excel sheet."
                     )
 
-        # 3. List Published Products
+        # 3. List Products
         elif intent == "list_products":
             res = wcapi.get("products", params={"per_page": 20, "status": "publish"})
             if res.status_code == 200:
@@ -142,11 +157,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     msg += f"{idx}. **{p['name']}** (Price: ${p.get('price', '0')})\n"
                 await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
 
-        # 4. General Q&A
+        # 4. General AI
         else:
-            client = genai.Client(api_key=os.getenv("GEMINI_API_KEY_1").strip())
-            ai_res = client.models.generate_content(model='gemini-3.6-flash', contents=user_prompt)
-            await context.bot.send_message(chat_id=chat_id, text=ai_res.text)
+            ai_text = call_gemini_with_fallback(user_prompt)
+            await context.bot.send_message(chat_id=chat_id, text=ai_text)
 
     except Exception as e:
         await context.bot.send_message(chat_id=chat_id, text=f"❌ Task Failed: {str(e)}")
