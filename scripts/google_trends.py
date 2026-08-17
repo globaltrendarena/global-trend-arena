@@ -1,0 +1,173 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyN4mcnoZLfq9Z7Kl2LxDIhf",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/globaltrendarena/global-trend-arena/blob/main/scripts/google_trends.py\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "EiCt5hVBL1Nd",
+        "outputId": "b9cd5f78-6db7-4aad-f5ef-4549f2459732"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Collecting pytrends\n",
+            "  Downloading pytrends-4.9.2-py3-none-any.whl.metadata (13 kB)\n",
+            "Collecting python-telegram-bot\n",
+            "  Downloading python_telegram_bot-22.8-py3-none-any.whl.metadata (17 kB)\n",
+            "Collecting woocommerce\n",
+            "  Downloading WooCommerce-3.0.0-py3-none-any.whl.metadata (8.2 kB)\n",
+            "Requirement already satisfied: google-genai in /usr/local/lib/python3.12/dist-packages (2.11.0)\n",
+            "Requirement already satisfied: requests>=2.0 in /usr/local/lib/python3.12/dist-packages (from pytrends) (2.32.4)\n",
+            "Requirement already satisfied: pandas>=0.25 in /usr/local/lib/python3.12/dist-packages (from pytrends) (2.2.2)\n",
+            "Requirement already satisfied: lxml in /usr/local/lib/python3.12/dist-packages (from pytrends) (6.1.1)\n",
+            "Requirement already satisfied: httpx<0.29,>=0.27 in /usr/local/lib/python3.12/dist-packages (from python-telegram-bot) (0.28.1)\n",
+            "Requirement already satisfied: anyio<5.0.0,>=4.8.0 in /usr/local/lib/python3.12/dist-packages (from google-genai) (4.14.2)\n",
+            "Requirement already satisfied: google-auth<3.0.0,>=2.48.1 in /usr/local/lib/python3.12/dist-packages (from google-auth[requests]<3.0.0,>=2.48.1->google-genai) (2.49.0)\n",
+            "Requirement already satisfied: pydantic<3.0.0,>=2.12.5 in /usr/local/lib/python3.12/dist-packages (from google-genai) (2.13.4)\n",
+            "Requirement already satisfied: tenacity<9.2.0,>=8.2.3 in /usr/local/lib/python3.12/dist-packages (from google-genai) (9.1.4)\n",
+            "Requirement already satisfied: websockets<17.0,>=13.0.0 in /usr/local/lib/python3.12/dist-packages (from google-genai) (15.0.1)\n",
+            "Requirement already satisfied: typing-extensions<5.0.0,>=4.14.0 in /usr/local/lib/python3.12/dist-packages (from google-genai) (4.16.0)\n",
+            "Requirement already satisfied: distro<2,>=1.7.0 in /usr/local/lib/python3.12/dist-packages (from google-genai) (1.9.0)\n",
+            "Requirement already satisfied: sniffio in /usr/local/lib/python3.12/dist-packages (from google-genai) (1.3.1)\n",
+            "Requirement already satisfied: idna>=2.8 in /usr/local/lib/python3.12/dist-packages (from anyio<5.0.0,>=4.8.0->google-genai) (3.18)\n",
+            "Requirement already satisfied: pyasn1-modules>=0.2.1 in /usr/local/lib/python3.12/dist-packages (from google-auth<3.0.0,>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->google-genai) (0.4.2)\n",
+            "Requirement already satisfied: cryptography>=38.0.3 in /usr/local/lib/python3.12/dist-packages (from google-auth<3.0.0,>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->google-genai) (49.0.0)\n",
+            "Requirement already satisfied: rsa<5,>=3.1.4 in /usr/local/lib/python3.12/dist-packages (from google-auth<3.0.0,>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->google-genai) (4.9.1)\n",
+            "Requirement already satisfied: certifi in /usr/local/lib/python3.12/dist-packages (from httpx<0.29,>=0.27->python-telegram-bot) (2026.6.17)\n",
+            "Requirement already satisfied: httpcore==1.* in /usr/local/lib/python3.12/dist-packages (from httpx<0.29,>=0.27->python-telegram-bot) (1.0.9)\n",
+            "Requirement already satisfied: h11>=0.16 in /usr/local/lib/python3.12/dist-packages (from httpcore==1.*->httpx<0.29,>=0.27->python-telegram-bot) (0.16.0)\n",
+            "Requirement already satisfied: numpy>=1.26.0 in /usr/local/lib/python3.12/dist-packages (from pandas>=0.25->pytrends) (2.0.2)\n",
+            "Requirement already satisfied: python-dateutil>=2.8.2 in /usr/local/lib/python3.12/dist-packages (from pandas>=0.25->pytrends) (2.9.0.post0)\n",
+            "Requirement already satisfied: pytz>=2020.1 in /usr/local/lib/python3.12/dist-packages (from pandas>=0.25->pytrends) (2025.2)\n",
+            "Requirement already satisfied: tzdata>=2022.7 in /usr/local/lib/python3.12/dist-packages (from pandas>=0.25->pytrends) (2026.3)\n",
+            "Requirement already satisfied: annotated-types>=0.6.0 in /usr/local/lib/python3.12/dist-packages (from pydantic<3.0.0,>=2.12.5->google-genai) (0.7.0)\n",
+            "Requirement already satisfied: pydantic-core==2.46.4 in /usr/local/lib/python3.12/dist-packages (from pydantic<3.0.0,>=2.12.5->google-genai) (2.46.4)\n",
+            "Requirement already satisfied: typing-inspection>=0.4.2 in /usr/local/lib/python3.12/dist-packages (from pydantic<3.0.0,>=2.12.5->google-genai) (0.4.2)\n",
+            "Requirement already satisfied: charset_normalizer<4,>=2 in /usr/local/lib/python3.12/dist-packages (from requests>=2.0->pytrends) (3.4.9)\n",
+            "Requirement already satisfied: urllib3<3,>=1.21.1 in /usr/local/lib/python3.12/dist-packages (from requests>=2.0->pytrends) (2.5.0)\n",
+            "Requirement already satisfied: cffi>=2.0.0 in /usr/local/lib/python3.12/dist-packages (from cryptography>=38.0.3->google-auth<3.0.0,>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->google-genai) (2.1.0)\n",
+            "Requirement already satisfied: pyasn1<0.7.0,>=0.6.1 in /usr/local/lib/python3.12/dist-packages (from pyasn1-modules>=0.2.1->google-auth<3.0.0,>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->google-genai) (0.6.4)\n",
+            "Requirement already satisfied: six>=1.5 in /usr/local/lib/python3.12/dist-packages (from python-dateutil>=2.8.2->pandas>=0.25->pytrends) (1.17.0)\n",
+            "Requirement already satisfied: pycparser in /usr/local/lib/python3.12/dist-packages (from cffi>=2.0.0->cryptography>=38.0.3->google-auth<3.0.0,>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->google-genai) (3.0)\n",
+            "Downloading pytrends-4.9.2-py3-none-any.whl (15 kB)\n",
+            "Downloading python_telegram_bot-22.8-py3-none-any.whl (769 kB)\n",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m769.4/769.4 kB\u001b[0m \u001b[31m12.1 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\n",
+            "\u001b[?25hDownloading WooCommerce-3.0.0-py3-none-any.whl (7.0 kB)\n",
+            "Installing collected packages: woocommerce, pytrends, python-telegram-bot\n",
+            "Successfully installed python-telegram-bot-22.8 pytrends-4.9.2 woocommerce-3.0.0\n"
+          ]
+        }
+      ],
+      "source": [
+        "!pip install pytrends python-telegram-bot woocommerce google-genai\n",
+        "import logging\n",
+        "from pytrends.request import TrendReq\n",
+        "\n",
+        "logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)\n",
+        "\n",
+        "COUNTRY_CODES = {\n",
+        "    \"USA\": \"US\", \"UNITED STATES\": \"US\", \"AMERICA\": \"US\",\n",
+        "    \"UK\": \"GB\", \"UNITED KINGDOM\": \"GB\", \"ENGLAND\": \"GB\",\n",
+        "    \"CANADA\": \"CA\", \"AUSTRALIA\": \"AU\", \"GERMANY\": \"DE\", \"JAPAN\": \"JP\"\n",
+        "}\n",
+        "\n",
+        "def get_google_trends(keyword, country_name=\"USA\"):\n",
+        "    try:\n",
+        "        pytrends = TrendReq(hl='en-US', tz=360)\n",
+        "        c_code = COUNTRY_CODES.get(country_name.upper(), \"US\")\n",
+        "\n",
+        "        pytrends.build_payload([keyword], cat=0, timeframe='now 7-d', geo=c_code, gprop='')\n",
+        "\n",
+        "        related_queries = pytrends.related_queries()\n",
+        "        top_queries = related_queries.get(keyword, {}).get('top')\n",
+        "\n",
+        "        region_df = pytrends.interest_by_region(resolution='CITY', inc_low_vol=True, inc_geo_code=False)\n",
+        "        top_cities = region_df.sort_values(by=keyword, ascending=False).head(5)\n",
+        "\n",
+        "        report = f\"📊 **Google Trends Report: '{keyword}' ({country_name})**\\n\\n\"\n",
+        "\n",
+        "        report += \"🔥 **Top Related Keywords (High Potential):**\\n\"\n",
+        "        if top_queries is not None and not top_queries.empty:\n",
+        "            for idx, row in top_queries.head(5).iterrows():\n",
+        "                report += f\"• {row['query']} (Score: {row['value']})\\n\"\n",
+        "        else:\n",
+        "            report += \"• No high-volume related search queries found.\\n\"\n",
+        "\n",
+        "        report += f\"\\n📍 **Top Interested Cities in {country_name}:**\\n\"\n",
+        "        if not top_cities.empty:\n",
+        "            for city, row in top_cities.iterrows():\n",
+        "                if row[keyword] > 0:\n",
+        "                    report += f\"• {city}: Interest Score {row[keyword]}\\n\"\n",
+        "        else:\n",
+        "            report += \"• No specific city-level data available.\\n\"\n",
+        "\n",
+        "        return report\n",
+        "\n",
+        "    except Exception as e:\n",
+        "        logging.error(f\"Google Trends Error: {e}\")\n",
+        "        return f\"❌ Failed to fetch Google Trends data: {str(e)}\"\n",
+        "\n",
+        "def analyze_store_trends(product_keywords, country_name=\"USA\"):\n",
+        "    try:\n",
+        "        pytrends = TrendReq(hl='en-US', tz=360)\n",
+        "        c_code = COUNTRY_CODES.get(country_name.upper(), \"US\")\n",
+        "\n",
+        "        report = f\"🛍️ **Store Products Trend Analysis ({country_name})**\\n\\n\"\n",
+        "\n",
+        "        for kw in product_keywords[:3]:\n",
+        "            pytrends.build_payload([kw], cat=0, timeframe='now 7-d', geo=c_code, gprop='')\n",
+        "\n",
+        "            related_queries = pytrends.related_queries()\n",
+        "            top_queries = related_queries.get(kw, {}).get('top')\n",
+        "\n",
+        "            report += f\"🏷️ **Product Keyword: '{kw}'**\\n\"\n",
+        "\n",
+        "            if top_queries is not None and not top_queries.empty:\n",
+        "                report += \"🔥 Top Searches:\\n\"\n",
+        "                for idx, row in top_queries.head(3).iterrows():\n",
+        "                    report += f\"  • {row['query']} (Score: {row['value']})\\n\"\n",
+        "            else:\n",
+        "                report += \"  • No search volume data found.\\n\"\n",
+        "\n",
+        "            report += \"-----------------------------------\\n\"\n",
+        "\n",
+        "        return report\n",
+        "\n",
+        "    except Exception as e:\n",
+        "        logging.error(f\"Store Trends Error: {e}\")\n",
+        "        return f\"❌ Failed to analyze store trends: {str(e)}\""
+      ]
+    }
+  ]
+}
