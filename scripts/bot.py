@@ -8,11 +8,15 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 from woocommerce import API
 
-from scripts.google_trends import get_google_trends, analyze_store_trends
+# Import module safely
+try:
+    from scripts.google_trends import get_google_trends, analyze_store_trends
+except ModuleNotFoundError:
+    from google_trends import get_google_trends, analyze_store_trends
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Dummy Server to pass Render Web Service Port Check
+# Dummy Server for Render Port Check
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -63,8 +67,9 @@ def parse_user_intent_with_gemini(user_text):
     {{"intent": "product", "name": "Title in English", "regular_price": "Numeric string", "short_description": "Summary in English", "description": "SEO Description in English"}}
     """
 
+    # Fixed official Gemini model identifier
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-1.5-flash',
         contents=prompt
     )
     return response.text
@@ -90,8 +95,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         raw_response = parse_user_intent_with_gemini(user_prompt)
-        
-        # Fixed line 93 syntax issue cleanly
         clean_json = raw_response.replace("```json", "").replace("```", "").strip()
         data = json.loads(clean_json)
 
