@@ -1,5 +1,6 @@
+google-genai
 python-telegram-bot
 woocommerce
-google-genai
 pytrends
 pandas
+openpyxl
