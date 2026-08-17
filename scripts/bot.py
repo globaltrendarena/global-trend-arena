@@ -70,8 +70,9 @@ def parse_user_intent_with_gemini(user_text):
     {{"intent": "product", "name": "Title in English", "regular_price": "Numeric string", "short_description": "Summary in English", "description": "SEO Description in English"}}
     """
 
+    # Updated to model gemini-3.5-flash-lite
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.5-flash-lite',
         contents=prompt
     )
     return response.text
@@ -97,73 +98,4 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         raw_response = parse_user_intent_with_gemini(user_prompt)
-        clean_json = raw_response.replace("```json", "").replace("```", "").strip()
-        data = json.loads(clean_json)
-
-        intent = data.get("intent", "product")
-
-        if intent == "store_trends":
-            country = data.get("country", "USA")
-            await context.bot.send_message(chat_id=chat_id, text="🛍️ Fetching product list from WooCommerce...")
-            
-            res = wcapi.get("products", params={"per_page": 5})
-            if res.status_code == 200:
-                products = res.json()
-                keywords = [p['name'] for p in products]
-
-                await context.bot.send_message(chat_id=chat_id, text=f"🔍 Analyzing store keyword trends in **{country}**...")
-                report = analyze_store_trends(keywords, country)
-                await context.bot.send_message(chat_id=chat_id, text=report, parse_mode='Markdown')
-            else:
-                await context.bot.send_message(chat_id=chat_id, text="❌ Failed to fetch products from WooCommerce.")
-
-        elif intent == "trends":
-            keyword = data.get("keyword", user_prompt)
-            country = data.get("country", "USA")
-            await context.bot.send_message(chat_id=chat_id, text=f"🔍 Fetching Google Trends for **{keyword}** in **{country}**...")
-            
-            report = get_google_trends(keyword, country)
-            await context.bot.send_message(chat_id=chat_id, text=report, parse_mode='Markdown')
-
-        else:
-            await context.bot.send_message(chat_id=chat_id, text="🔄 Generating product details & uploading to WooCommerce...")
-
-            woo_payload = {
-                "name": data.get("name", "New Product"),
-                "type": "simple",
-                "regular_price": str(data.get("regular_price", "0")),
-                "description": data.get("description", ""),
-                "short_description": data.get("short_description", ""),
-                "status": "draft"
-            }
-
-            res = wcapi.post("products", woo_payload)
-
-            if res.status_code in [200, 201]:
-                created_prod = res.json()
-                prod_id = created_prod.get("id")
-                prod_name = created_prod.get("name")
-                await context.bot.send_message(
-                    chat_id=chat_id, 
-                    text=f"✅ **Success!**\n\nProduct **{prod_name}** (ID: {prod_id}) created as Draft in WooCommerce."
-                )
-            else:
-                await context.bot.send_message(chat_id=chat_id, text=f"❌ WooCommerce API Error: Status Code {res.status_code}")
-
-    except Exception as e:
-        await context.bot.send_message(chat_id=chat_id, text=f"❌ Task Failed: {str(e)}")
-
-if __name__ == '__main__':
-    # Start dummy port server for Render
-    threading.Thread(target=run_dummy_server, daemon=True).start()
-
-    if not TELEGRAM_TOKEN:
-        logging.error("CRITICAL: TELEGRAM_BOT_TOKEN is missing in Render Environment Variables!")
-    else:
-        app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-        app.add_handler(CommandHandler("start", start_command))
-        app.add_handler(CommandHandler("status", status_command))
-        app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-        
-        print("Telegram Central Bot is running...")
-        app.run_polling()
+        clean_json = raw_response.replace("```json", "").replace("
