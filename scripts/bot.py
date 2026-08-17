@@ -97,4 +97,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         raw_response = parse_user_intent_with_gemini(user_prompt)
-        clean_json = raw_response.replace("```json", "").replace("
+        clean_json = raw_response.strip()
+        if clean_json.startswith("```"):
+            clean_json = clean_json.split("\n", 1)[1]
+        if clean_json.endswith("
