@@ -1,16 +1,25 @@
 import pandas as pd
+import re
 from pytrends.request import TrendReq
 
 COUNTRY_CODES = {
     "USA": "US",
     "UNITED STATES": "US",
+    "AMERICA": "US",
     "UK": "GB",
     "UNITED KINGDOM": "GB",
+    "ENGLAND": "GB",
     "BANGLADESH": "BD",
     "INDIA": "IN",
     "CANADA": "CA",
     "AUSTRALIA": "AU"
 }
+
+def clean_keyword(text):
+    """ Extract first 1-2 words and remove special characters for Google Trends compatibility """
+    clean_text = re.sub(r'[^\w\s]', '', text)
+    words = clean_text.split()
+    return " ".join(words[:2]) if words else "product"
 
 def get_google_trends(keyword, country="USA"):
     try:
@@ -57,24 +66,26 @@ def analyze_store_trends(keywords, country="USA"):
     geo_code = COUNTRY_CODES.get(country.upper(), "US")
     pytrend = TrendReq(hl='en-US', tz=360)
     
-    # Process max 5 keywords due to Google Trends limit
-    sample_keywords = keywords[:5]
+    # Process max 3 keywords and clean them to prevent 400 error
+    clean_kw_list = [clean_keyword(kw) for kw in keywords[:3]]
+    # Remove duplicates if any
+    clean_kw_list = list(dict.fromkeys(clean_kw_list))
     
     try:
-        pytrend.build_payload(kw_list=sample_keywords, timeframe='today 12-m', geo=geo_code)
+        pytrend.build_payload(kw_list=clean_kw_list, timeframe='now 7-d', geo=geo_code)
         df_interest = pytrend.interest_over_time()
         
         if df_interest.empty:
             return f"⚠️ No trend data available for store products in {country}."
 
-        averages = df_interest[sample_keywords].mean().sort_values(ascending=False)
+        averages = df_interest[clean_kw_list].mean().sort_values(ascending=False)
         
         report = f"🛍️ **Store Product Trend Analysis ({country})**\n\n"
         report += "📈 **Relative Demand (Out of 100):**\n"
         for kw, score in averages.items():
             report += f"• **{kw}**: {round(score, 1)}/100\n"
             
-        report += f"\n🏆 **Top Demand Product:** {averages.index[0]}"
+        report += f"\n🏆 **Top Demand Product Keyword:** {averages.index[0]}"
         return report
 
     except Exception as e:
