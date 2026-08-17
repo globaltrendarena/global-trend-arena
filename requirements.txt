@@ -1,3 +1,5 @@
-python-telegram-bot==20.7
-google-genai
+python-telegram-bot
 woocommerce
+google-genai
+pytrends
+pandas
