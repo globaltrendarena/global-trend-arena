@@ -47,7 +47,7 @@ def call_gemini_with_fallback(prompt):
     ]
     api_keys = [k.strip() for k in api_keys if k and k.strip()]
 
-    # Fallback model priority: 2.5-flash-lite -> 2.5-flash -> 1.5-flash
+    # Fallback models: 2.5-flash-lite -> 2.5-flash -> 1.5-flash
     models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash']
 
     for key in api_keys:
@@ -70,23 +70,30 @@ def parse_user_intent_with_gemini(user_text):
     Strictly analyze the user input: "{user_text}".
     You must classify the request into ONLY ONE of the following 4 categories:
 
-    1. "seo_advice": STRICTLY USE THIS if the user asks for SEO keywords, keyword selection, keyword list, SEO strategy, ranking tips, or how to target products.
+    1. "seo_advice": STRICTLY USE THIS if the user asks for SEO keywords, keyword selection, keyword list, high CPC keywords, SEO strategy, ranking tips, or how to target products.
     2. "where_searched": ONLY use this if the user EXPLICITLY asks WHICH COUNTRY / WHERE a product is searched, or explicitly asks for an Excel sheet download.
     3. "list_products": User asks to view, list, or count WooCommerce products.
     4. "general_ai": General open questions, chat, or advice not matching above.
 
-    CRITICAL RULE: If the input contains words like "কিওয়ার্ড", "এসইও", "তালিকা", "সিলেক্ট", return "seo_advice". DO NOT return "where_searched".
+    CRITICAL RULE: If the input contains words like "কিওয়ার্ড", "এসইও", "সিপিসি", "CPC", "তালিকা", "সিলেক্ট", return "seo_advice". DO NOT return "where_searched".
 
     Return ONLY a JSON response format:
     {{"intent": "seo_advice" | "where_searched" | "list_products" | "general_ai"}}
     """
     return call_gemini_with_fallback(prompt)
 
+async def safe_send_markdown(context, chat_id, text):
+    """ Safely send markdown message; fallback to plain text if Telegram fails to parse """
+    try:
+        await context.bot.send_message(chat_id=chat_id, text=text, parse_mode='Markdown')
+    except Exception:
+        await context.bot.send_message(chat_id=chat_id, text=text)
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_prompt = update.message.text
     chat_id = update.effective_chat.id
     
-    await context.bot.send_message(chat_id=chat_id, text="⏳ Processing request...")
+    await context.bot.send_message(chat_id=chat_id, text="⏳ Processing request with AI...")
 
     try:
         raw_response = parse_user_intent_with_gemini(user_prompt)
@@ -95,9 +102,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         intent = data.get("intent", "general_ai")
 
-        # 1. SEO Advice
+        # 1. SEO & High CPC Keyword Strategy
         if intent == "seo_advice":
-            await context.bot.send_message(chat_id=chat_id, text="🔍 WooCommerce প্রোডাক্টের উপর ভিত্তি করে SEO কিওয়ার্ড রিসার্চ করা হচ্ছে...")
+            await context.bot.send_message(chat_id=chat_id, text="🔍 WooCommerce প্রোডাক্ট ও Google Trends ডাটা বিশ্লেষণ করে High-CPC SEO কিওয়ার্ড রিসার্চ করা হচ্ছে...")
             res = wcapi.get("products", params={"per_page": 5, "status": "publish"})
             
             if res.status_code == 200:
@@ -108,25 +115,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 seo_trends = get_seo_keywords_for_products([p['name'] for p in products])
                 
                 seo_prompt = f"""
-                You are an Expert E-commerce SEO Specialist.
+                You are an Expert E-commerce SEO and High-CPC Keyword Strategist.
                 The user asked: "{user_prompt}"
 
-                Here are the published WooCommerce products:
+                Published WooCommerce products:
                 {products_str}
 
                 Raw Trends Data for related queries:
                 {json.dumps(seo_trends)}
 
-                Please generate a complete SEO keyword selection strategy in clear Bangla:
-                1. Main Focus Keywords for each product.
-                2. Long-tail Keywords for high conversions.
-                3. Buyer-intent Search Queries.
-                4. Content / Tag suggestions for SEO ranking.
-                Use bullet points and bold headers for formatting.
+                Please generate a structured SEO keyword strategy in clear Bangla:
+                1. Main Target Keywords for each product based on Google Trends.
+                2. High-CPC Countries Search Intent & Long-tail Keywords.
+                3. Buyer-intent Search Queries for maximum conversions.
+                Use bullet points and clear formatting.
                 """
                 
                 ai_text = call_gemini_with_fallback(seo_prompt)
-                await context.bot.send_message(chat_id=chat_id, text=ai_text, parse_mode='Markdown')
+                await safe_send_markdown(context, chat_id, ai_text)
             else:
                 await context.bot.send_message(chat_id=chat_id, text="❌ WooCommerce প্রোডাক্ট ফেচ করতে সমস্যা হয়েছে।")
 
@@ -138,7 +144,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keywords = [p['name'] for p in res.json()]
                 report_text, excel_path = get_top_regions_and_excel(keywords)
                 
-                await context.bot.send_message(chat_id=chat_id, text=report_text, parse_mode='Markdown')
+                await safe_send_markdown(context, chat_id, report_text)
                 if excel_path and os.path.exists(excel_path):
                     await context.bot.send_document(
                         chat_id=chat_id, 
@@ -155,12 +161,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 msg = f"📊 **Total Live Published Products: {len(products)}**\n\n"
                 for idx, p in enumerate(products, 1):
                     msg += f"{idx}. **{p['name']}** (Price: ${p.get('price', '0')})\n"
-                await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
+                await safe_send_markdown(context, chat_id, msg)
 
         # 4. General AI
         else:
             ai_text = call_gemini_with_fallback(user_prompt)
-            await context.bot.send_message(chat_id=chat_id, text=ai_text)
+            await safe_send_markdown(context, chat_id, ai_text)
 
     except Exception as e:
         await context.bot.send_message(chat_id=chat_id, text=f"❌ Task Failed: {str(e)}")
