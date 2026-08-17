@@ -55,7 +55,7 @@ def generate_product_with_gemini(prompt_text):
 
     # Official latest fast Flash model
     response = client.models.generate_content(
-        model='gemini-2.0-flash',
+        model='gemini-3.5-flash-lite',
         contents=ai_prompt
     )
     return response.text
