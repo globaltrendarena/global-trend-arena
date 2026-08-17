@@ -1,6 +1,10 @@
+python-telegram-bot==20.8
 google-genai
-python-telegram-bot
-woocommerce
-pytrends
 pandas
 openpyxl
+xlsxwriter
+beautifulsoup4
+requests
+google-auth
+gspread
+trendspyg
