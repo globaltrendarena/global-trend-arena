@@ -69,7 +69,7 @@ def parse_user_intent_with_gemini(user_text):
 
     # Fixed official Gemini model identifier
     response = client.models.generate_content(
-        model='gemini-1.5-flash',
+        model='gemini-3.5-flash-lite',
         contents=prompt
     )
     return response.text
