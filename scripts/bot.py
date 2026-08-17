@@ -10,12 +10,12 @@ from woocommerce import API
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Dummy Server to pass Render Web Service Port Check
+# Dummy Server for Render Web Service Port Check
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot is live!")
+        self.wfile.write(b"Bot is active!")
 
 def run_dummy_server():
     port = int(os.getenv("PORT", 8080))
@@ -37,28 +37,31 @@ wcapi = API(
 def generate_product_with_gemini(prompt_text):
     api_key = os.getenv("GEMINI_API_KEY_1")
     if not api_key:
-        raise ValueError("GEMINI_API_KEY_1 is missing in Environment Variables!")
+        raise ValueError("GEMINI_API_KEY_1 missing in Environment Variables!")
 
     client = genai.Client(api_key=api_key.strip())
     
     ai_prompt = f"""
-    Create an e-commerce product based on: "{prompt_text}".
-    You must output a single JSON object with these exact keys:
-    - "name": Product title
-    - "regular_price": Price as a numeric string (e.g. "3500")
-    - "short_description": 2-3 sentence summary
-    - "description": Detailed product description
+    Create an e-commerce product entry based on: "{prompt_text}".
+    Output MUST be a single raw JSON object without markdown ticks or pre-text.
+    JSON structure:
+    {{
+        "name": "Product title",
+        "regular_price": "3500",
+        "short_description": "Catchy short description",
+        "description": "Detailed SEO description"
+    }}
     """
 
+    # Updated model name to gemini-1.5-flash
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=ai_prompt,
-        config={'response_mime_type': 'application/json'}
+        model='gemini-1.5-flash',
+        contents=ai_prompt
     )
     return response.text
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Welcome! Send me product details to upload to WooCommerce as a Draft.")
+    await update.message.reply_text("👋 Welcome! Send product text to auto-post as WooCommerce Draft.")
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot is online & running.")
@@ -70,8 +73,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=chat_id, text="⏳ Processing product details with Gemini AI...")
 
     try:
-        raw_json_response = generate_product_with_gemini(user_prompt)
-        product_data = json.loads(raw_json_response)
+        raw_response = generate_product_with_gemini(user_prompt)
+        
+        # Strip potential markdown formatting from AI output
+        clean_json = raw_response.replace("```json", "").replace("```", "").strip()
+        product_data = json.loads(clean_json)
 
         await context.bot.send_message(chat_id=chat_id, text="🔄 Uploading product to WooCommerce...")
 
