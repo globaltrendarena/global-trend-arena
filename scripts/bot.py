@@ -67,9 +67,9 @@ def parse_user_intent_with_gemini(user_text):
     {{"intent": "product", "name": "Title in English", "regular_price": "Numeric string", "short_description": "Summary in English", "description": "SEO Description in English"}}
     """
 
-    # Fixed official Gemini model identifier
+    # Corrected official Gemini model identifier to avoid 404 NOT_FOUND
     response = client.models.generate_content(
-        model='gemini-3.5-flash-lite',
+        model='gemini-2.5-flash',
         contents=prompt
     )
     return response.text
