@@ -8,6 +8,8 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 from woocommerce import API
 
+from scripts.google_trends import get_google_trends, analyze_store_trends
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # Dummy Server to pass Render Web Service Port Check
@@ -34,34 +36,48 @@ wcapi = API(
     version="wc/v3"
 )
 
-def generate_product_with_gemini(prompt_text):
+def parse_user_intent_with_gemini(user_text):
     api_key = os.getenv("GEMINI_API_KEY_1")
     if not api_key:
         raise ValueError("GEMINI_API_KEY_1 missing in Environment Variables!")
 
     client = genai.Client(api_key=api_key.strip())
     
-    ai_prompt = f"""
-    Create an e-commerce product entry based on: "{prompt_text}".
-    Output MUST be a single raw JSON object without markdown formatting.
-    JSON structure:
-    {{
-        "name": "Product title",
-        "regular_price": "3500",
-        "short_description": "Catchy short description",
-        "description": "Detailed description"
-    }}
+    prompt = f"""
+    Analyze the user text (which can be in ANY language): "{user_text}".
+    Determine the intent:
+    1. If asking to analyze store/website products trend (e.g., "check store trends", "my product trends in USA"), set intent to "store_trends".
+    2. If asking for general Google Trends/Keywords in a location, set intent to "trends".
+    3. Otherwise, set intent to "product" to generate a WooCommerce product entry.
+
+    IMPORTANT: Translate extracted values (keywords, product titles, descriptions) into English.
+
+    Return JSON ONLY with structure:
+    If intent is "store_trends":
+    {{"intent": "store_trends", "country": "extracted country in English like USA, UK, Canada (default to USA)"}}
+
+    If intent is "trends":
+    {{"intent": "trends", "keyword": "extracted keyword in English", "country": "extracted country in English (default to USA)"}}
+
+    If intent is "product":
+    {{"intent": "product", "name": "Title in English", "regular_price": "Numeric string", "short_description": "Summary in English", "description": "SEO Description in English"}}
     """
 
-    # Official latest fast Flash model
     response = client.models.generate_content(
-        model='gemini-3.5-flash-lite',
-        contents=ai_prompt
+        model='gemini-2.5-flash',
+        contents=prompt
     )
     return response.text
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Welcome! Send product details to create a draft in WooCommerce.")
+    welcome = (
+        "👋 **Welcome to AI Assistant Bot!**\n\n"
+        "Send prompts in any language:\n"
+        "• **General Trends:** 'USA te finance er obostha kemon?'\n"
+        "• **Store Trends:** 'Check trends for my store products in UK'\n"
+        "• **Post Product:** 'Silk Saree price 4500 BDT'"
+    )
+    await update.message.reply_text(welcome, parse_mode='Markdown')
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot is online & running.")
@@ -70,52 +86,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_prompt = update.message.text
     chat_id = update.effective_chat.id
     
-    await context.bot.send_message(chat_id=chat_id, text="⏳ Processing product details with Gemini AI...")
+    await context.bot.send_message(chat_id=chat_id, text="⏳ Analyzing your request with Gemini AI...")
 
     try:
-        raw_response = generate_product_with_gemini(user_prompt)
-        
-        # Clean markdown wrappers if returned
-        clean_json = raw_response.replace("```json", "").replace("```", "").strip()
-        product_data = json.loads(clean_json)
-
-        await context.bot.send_message(chat_id=chat_id, text="🔄 Uploading product to WooCommerce...")
-
-        woo_payload = {
-            "name": product_data.get("name", "New Product"),
-            "type": "simple",
-            "regular_price": str(product_data.get("regular_price", "0")),
-            "description": product_data.get("description", ""),
-            "short_description": product_data.get("short_description", ""),
-            "status": "draft"
-        }
-
-        res = wcapi.post("products", woo_payload)
-
-        if res.status_code in [200, 201]:
-            created_prod = res.json()
-            prod_id = created_prod.get("id")
-            prod_name = created_prod.get("name")
-            await context.bot.send_message(
-                chat_id=chat_id, 
-                text=f"✅ **Success!**\n\nProduct **{prod_name}** (ID: {prod_id}) created as Draft in WooCommerce."
-            )
-        else:
-            await context.bot.send_message(chat_id=chat_id, text=f"❌ WooCommerce API Error: Status Code {res.status_code}")
-
-    except Exception as e:
-        await context.bot.send_message(chat_id=chat_id, text=f"❌ Task Failed: {str(e)}")
-
-if __name__ == '__main__':
-    if not TELEGRAM_TOKEN:
-        raise ValueError("TELEGRAM_BOT_TOKEN is missing!")
-    
-    threading.Thread(target=run_dummy_server, daemon=True).start()
-        
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("status", status_command))
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    
-    print("Telegram Central Bot is running...")
-    app.run_polling()
+        raw_response = parse_user_intent_with_gemini(user_prompt)
+        clean_json = raw_response.replace("```json", "").replace("
