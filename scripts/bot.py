@@ -52,19 +52,24 @@ def parse_user_intent_with_gemini(user_text):
     
     prompt = f"""
     Analyze the user text (which can be in ANY language): "{user_text}".
-    Determine the intent:
-    1. If asking to analyze store/website products trend (e.g., "check store trends", "my product trends in USA"), set intent to "store_trends".
-    2. If asking for general Google Trends/Keywords in a location, set intent to "trends".
-    3. Otherwise, set intent to "product" to generate a WooCommerce product entry.
+    Determine the user's intent from these options:
+    
+    1. "store_trends": If asking to check or analyze store/website product trends (e.g., "check store trends", "UK?", "my product trends in UK").
+    2. "trends": If asking for general keyword or search trends in a location (e.g., "USA te finance er obostha kemon?").
+    3. "list_products": If asking to list, show, or count existing WooCommerce products (e.g., "how many products", "website e koita product ache", "show product list").
+    4. "product": ONLY if asking to create/post a NEW WooCommerce product (e.g., "add Silk Saree price 4500", "post new item").
 
-    IMPORTANT: Translate extracted values (keywords, product titles, descriptions) into English.
+    IMPORTANT: Translate extracted values into English.
 
     Return JSON ONLY with structure:
     If intent is "store_trends":
-    {{"intent": "store_trends", "country": "extracted country in English like USA, UK, Canada (default to USA)"}}
+    {{"intent": "store_trends", "country": "extracted country in English (default to USA)"}}
 
     If intent is "trends":
     {{"intent": "trends", "keyword": "extracted keyword in English", "country": "extracted country in English (default to USA)"}}
+
+    If intent is "list_products":
+    {{"intent": "list_products"}}
 
     If intent is "product":
     {{"intent": "product", "name": "Title in English", "regular_price": "Numeric string", "short_description": "Summary in English", "description": "SEO Description in English"}}
@@ -82,7 +87,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Send prompts in any language:\n"
         "• **General Trends:** 'USA te finance er obostha kemon?'\n"
         "• **Store Trends:** 'Check trends for my store products in UK'\n"
-        "• **Post Product:** 'Silk Saree price 4500 BDT'"
+        "• **Product List:** 'Websites e koyta product ache?'\n"
+        "• **Post Product:** 'Post Silk Saree price 4500 BDT'"
     )
     await update.message.reply_text(welcome, parse_mode='Markdown')
 
@@ -102,6 +108,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         intent = data.get("intent", "product")
 
+        # 1. Store Product Trends Check
         if intent == "store_trends":
             country = data.get("country", "USA")
             await context.bot.send_message(chat_id=chat_id, text="🛍️ Fetching product list from WooCommerce...")
@@ -117,6 +124,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 await context.bot.send_message(chat_id=chat_id, text="❌ Failed to fetch products from WooCommerce.")
 
+        # 2. General Google Trends Check
         elif intent == "trends":
             keyword = data.get("keyword", user_prompt)
             country = data.get("country", "USA")
@@ -125,7 +133,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             report = get_google_trends(keyword, country)
             await context.bot.send_message(chat_id=chat_id, text=report, parse_mode='Markdown')
 
-        else:
+        # 3. List Existing Products Intent
+        elif intent == "list_products":
+            await context.bot.send_message(chat_id=chat_id, text="📦 Fetching product list from WooCommerce...")
+            res = wcapi.get("products", params={"per_page": 20})
+            
+            if res.status_code == 200:
+                products = res.json()
+                total_products = len(products)
+                if total_products == 0:
+                    await context.bot.send_message(chat_id=chat_id, text="ℹ️ No products found in your WooCommerce store.")
+                else:
+                    msg = f"📊 **Total Products Fetched: {total_products}**\n\n"
+                    for idx, p in enumerate(products, 1):
+                        msg += f"{idx}. **{p['name']}** (Price: {p.get('price', 'N/A')})\n"
+                    await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
+            else:
+                await context.bot.send_message(chat_id=chat_id, text="❌ Failed to fetch product list from WooCommerce.")
+
+        # 4. Create New Product Intent
+        elif intent == "product":
             await context.bot.send_message(chat_id=chat_id, text="🔄 Generating product details & uploading to WooCommerce...")
 
             woo_payload = {
@@ -154,7 +181,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=chat_id, text=f"❌ Task Failed: {str(e)}")
 
 if __name__ == '__main__':
-    # Start dummy port server for Render
     threading.Thread(target=run_dummy_server, daemon=True).start()
 
     if not TELEGRAM_TOKEN:
