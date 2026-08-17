@@ -40,14 +40,14 @@ def get_google_trends(keyword, country="USA"):
 
         # Build Response Report
         report = f"📊 **Google Trends Report for '{keyword}' ({country})**\n\n"
-        report += "🔥 **Top Interested Regions/Cities:**\n"
+        report += "🔥 **Top Interested Regions:**\n"
         if not top_regions.empty:
             for region, row in top_regions.iterrows():
                 report += f"• {region}: {row[keyword]}/100\n"
         else:
             report += "No regional data available.\n"
             
-        report += "\n💡 **Top Related Search Queries:**\n"
+        report += "\n💡 **Top Related Search Queries (কীওয়ার্ড):**\n"
         if top_related:
             for q in top_related:
                 report += f"• {q}\n"
@@ -66,9 +66,8 @@ def analyze_store_trends(keywords, country="USA"):
     geo_code = COUNTRY_CODES.get(country.upper(), "US")
     pytrend = TrendReq(hl='en-US', tz=360)
     
-    # Process max 3 keywords and clean them to prevent 400 error
+    # Clean keywords to prevent Google 400 error
     clean_kw_list = [clean_keyword(kw) for kw in keywords[:3]]
-    # Remove duplicates if any
     clean_kw_list = list(dict.fromkeys(clean_kw_list))
     
     try:
@@ -85,7 +84,22 @@ def analyze_store_trends(keywords, country="USA"):
         for kw, score in averages.items():
             report += f"• **{kw}**: {round(score, 1)}/100\n"
             
-        report += f"\n🏆 **Top Demand Product Keyword:** {averages.index[0]}"
+        top_product = averages.index[0]
+        report += f"\n🏆 **Top Demand Product:** {top_product}\n"
+
+        # Fetch Related Search Queries for the Top Product
+        try:
+            pytrend.build_payload(kw_list=[top_product], timeframe='today 12-m', geo=geo_code)
+            related_queries = pytrend.related_queries()
+            
+            if top_product in related_queries and related_queries[top_product]['top'] is not None:
+                top_related = related_queries[top_product]['top']['query'].head(4).tolist()
+                report += f"\n🔍 **People also search on Google for '{top_product}':**\n"
+                for q in top_related:
+                    report += f"• {q}\n"
+        except Exception:
+            pass # Ignore if related queries fetch fails
+
         return report
 
     except Exception as e:
