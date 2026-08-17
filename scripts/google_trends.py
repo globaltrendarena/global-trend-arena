@@ -1,72 +1,50 @@
 import pandas as pd
 import re
+import os
 from pytrends.request import TrendReq
 
-COUNTRY_CODES = {
-    "USA": "US",
-    "UNITED STATES": "US",
-    "AMERICA": "US",
-    "UK": "GB",
-    "UNITED KINGDOM": "GB",
-    "ENGLAND": "GB",
-    "BANGLADESH": "BD",
-    "INDIA": "IN",
-    "CANADA": "CA",
-    "AUSTRALIA": "AU"
-}
-
 def clean_keyword(text):
-    """ Extract first 1-2 words and remove special characters for Google Trends compatibility """
     clean_text = re.sub(r'[^\w\s]', '', text)
     words = clean_text.split()
     return " ".join(words[:2]) if words else "product"
 
-def get_google_trends(keyword, country="USA"):
+def get_top_regions_and_excel(keywords):
+    """ Fetch top searching regions worldwide & generate an Excel file """
+    pytrend = TrendReq(hl='en-US', tz=360)
+    
+    clean_kw_list = [clean_keyword(kw) for kw in keywords[:5]]
+    clean_kw_list = list(dict.fromkeys(clean_kw_list))
+
     try:
-        geo_code = COUNTRY_CODES.get(country.upper(), "US")
-        pytrend = TrendReq(hl='en-US', tz=360)
+        pytrend.build_payload(kw_list=clean_kw_list, timeframe='today 12-m')
+        df_region = pytrend.interest_by_region(resolution='COUNTRY', inc_low_vol=True)
         
-        pytrend.build_payload(kw_list=[keyword], timeframe='today 12-m', geo=geo_code)
-        
-        # Interest by Region
-        df_region = pytrend.interest_by_region(resolution='COUNTRY', inc_low_vol=True, inc_geo_code=False)
-        top_regions = df_region.sort_values(by=keyword, ascending=False).head(5)
-        
-        # Related Queries
-        related_queries = pytrend.related_queries()
-        top_related = []
-        if keyword in related_queries and related_queries[keyword]['top'] is not None:
-            top_related = related_queries[keyword]['top']['query'].head(5).tolist()
+        # Save Excel File
+        excel_path = "google_trends_report.xlsx"
+        df_region.to_excel(excel_path)
 
-        # Build Response Report
-        report = f"📊 **Google Trends Report for '{keyword}' ({country})**\n\n"
-        report += "🔥 **Top Interested Regions:**\n"
-        if not top_regions.empty:
-            for region, row in top_regions.iterrows():
-                report += f"• {region}: {row[keyword]}/100\n"
-        else:
-            report += "No regional data available.\n"
-            
-        report += "\n💡 **Top Related Search Queries (কীওয়ার্ড):**\n"
-        if top_related:
-            for q in top_related:
-                report += f"• {q}\n"
-        else:
-            report += "No related queries found.\n"
+        report = "🌍 **Worldwide Top Searching Regions:**\n\n"
+        for kw in clean_kw_list:
+            if kw in df_region.columns:
+                top_countries = df_region.sort_values(by=kw, ascending=False).head(3)
+                report += f"🔹 **{kw}**:\n"
+                for country, row in top_countries.iterrows():
+                    if row[kw] > 0:
+                        report += f"  • {country}: {row[kw]}/100\n"
+                report += "\n"
 
-        return report
+        return report, excel_path
 
     except Exception as e:
-        return f"⚠️ Could not fetch Google Trends data: {str(e)}"
+        return f"⚠️ Error fetching regional data: {str(e)}", None
 
 def analyze_store_trends(keywords, country="USA"):
     if not keywords:
         return "❌ No WooCommerce products found to analyze."
 
-    geo_code = COUNTRY_CODES.get(country.upper(), "US")
+    geo_code = "US" if country.upper() in ["USA", "UNITED STATES"] else ""
     pytrend = TrendReq(hl='en-US', tz=360)
     
-    # Clean keywords to prevent Google 400 error
     clean_kw_list = [clean_keyword(kw) for kw in keywords[:3]]
     clean_kw_list = list(dict.fromkeys(clean_kw_list))
     
@@ -86,19 +64,6 @@ def analyze_store_trends(keywords, country="USA"):
             
         top_product = averages.index[0]
         report += f"\n🏆 **Top Demand Product:** {top_product}\n"
-
-        # Fetch Related Search Queries for the Top Product
-        try:
-            pytrend.build_payload(kw_list=[top_product], timeframe='today 12-m', geo=geo_code)
-            related_queries = pytrend.related_queries()
-            
-            if top_product in related_queries and related_queries[top_product]['top'] is not None:
-                top_related = related_queries[top_product]['top']['query'].head(4).tolist()
-                report += f"\n🔍 **People also search on Google for '{top_product}':**\n"
-                for q in top_related:
-                    report += f"• {q}\n"
-        except Exception:
-            pass # Ignore if related queries fetch fails
 
         return report
 
