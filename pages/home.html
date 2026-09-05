@@ -1,0 +1,66 @@
+<div id="home-page">
+  <section style="padding: 20px 0 40px;">
+    <h1 style="font-size:1.8rem; margin-bottom:6px; color:#12172b;">Welcome to Inaaya's Mart</h1>
+    <p style="color:#64748b; margin-bottom:20px;">Global trends, fast shipping, one storefront.</p>
+    <div id="home-status" style="font-size:0.85rem; color:#94a3b8; margin-bottom:16px;">Loading products…</div>
+    <div id="home-product-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px;"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const DEMO_PRODUCTS = [
+    { title: 'Aurora Table Lamp', price: 34.99, currency: 'USD', category: 'home-decor' },
+    { title: 'Cedarwood Pet Bed', price: 49.50, currency: 'USD', category: 'pet-care' },
+    { title: 'Nomad Travel Mug', price: 18.00, currency: 'USD', category: 'home-decor' },
+    { title: 'Sunwoven Throw Blanket', price: 29.99, currency: 'USD', category: 'home-decor' }
+  ];
+
+  function renderProducts(products, source) {
+    const grid = document.getElementById('home-product-grid');
+    const status = document.getElementById('home-status');
+    if (!grid || !status) return; // page was navigated away before this resolved
+    grid.innerHTML = '';
+    products.forEach(p => {
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;';
+      card.innerHTML = `
+        <div style="height:120px;background:#f1f5f9;border-radius:6px;margin-bottom:10px;"></div>
+        <div style="font-weight:600; color:#12172b;">${p.title}</div>
+        <div style="color:#0284c7;margin-top:4px;">${p.currency || 'USD'} ${Number(p.price).toFixed(2)}</div>
+      `;
+      grid.appendChild(card);
+    });
+    if (source === 'supabase') {
+      status.textContent = `Live from Supabase · ${products.length} product(s)`;
+      status.style.color = '#16a34a';
+    } else {
+      status.textContent = `Demo catalog (Supabase not connected yet) · ${products.length} product(s)`;
+      status.style.color = '#94a3b8';
+    }
+  }
+
+  async function loadHomeProducts() {
+    try {
+      await window.sbReady;
+      if (!window.sbConfigured) {
+        renderProducts(DEMO_PRODUCTS, 'demo');
+        return;
+      }
+      const { data, error } = await window.sb
+        .from('products')
+        .select('title, price, currency, category')
+        .eq('active', true)
+        .limit(8);
+      if (error) throw error;
+      const hasRows = data && data.length > 0;
+      renderProducts(hasRows ? data : DEMO_PRODUCTS, hasRows ? 'supabase' : 'demo');
+    } catch (err) {
+      console.error('[home] product load failed, falling back to demo catalog:', err);
+      renderProducts(DEMO_PRODUCTS, 'demo');
+    }
+  }
+
+  loadHomeProducts();
+})();
+</script>
