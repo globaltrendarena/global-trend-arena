@@ -4,46 +4,111 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inaaya's Mart - Global Premium Store</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-client.js"></script>
+    <meta name="description" content="Shop the latest global trends with fast shipping and secure checkout at Inaaya's Mart.">
+
+    <!-- Preconnect for External CDNs (Speed Optimization) -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
+    <!-- FontAwesome with Media Print Trick for Non-blocking CSS Load -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+
+    <!-- External JS Scripts with defer (Non-blocking) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/supabase-client.js" defer></script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background: #f8fafc; color: #1e293b; }
-        header { background: #fff; padding: 15px 5%; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; sticky: top; }
-        .logo { font-size: 1.5rem; font-weight: bold; color: #0284c7; text-decoration: none; }
-        .nav-bar { background: #0f172a; padding: 0 5%; display: flex; gap: 20px; overflow-x: auto; }
-        .nav-bar a { color: #94a3b8; text-decoration: none; padding: 12px 0; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; }
+        /* CSS Reset & Base Performance Rules */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background: #f8fafc; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Header Optimization */
+        header { background: #fff; padding: 12px 5%; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 1.5rem; font-weight: 700; color: #0284c7; text-decoration: none; }
+        .header-actions { display: flex; align-items: center; gap: 15px; }
+        .search-box { display: flex; align-items: center; background: #f1f5f9; padding: 6px 12px; border-radius: 20px; border: 1px solid #cbd5e1; }
+        .search-box input { border: none; background: transparent; outline: none; padding-left: 8px; font-size: 0.85rem; color: #334155; }
+        .cart-btn { position: relative; cursor: pointer; font-size: 1.2rem; color: #334155; }
+        .cart-badge { position: absolute; top: -8px; right: -10px; background: #ef4444; color: white; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 50%; }
+
+        /* Navigation Bar */
+        .nav-bar { background: #0f172a; padding: 0 5%; display: flex; gap: 20px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+        .nav-bar::-webkit-scrollbar { display: none; }
+        .nav-bar a { color: #94a3b8; text-decoration: none; padding: 12px 5px; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s ease; }
         .nav-bar a:hover, .nav-bar a.active { color: #38bdf8; border-bottom-color: #38bdf8; }
-        #app-root { max-width: 1200px; margin: 25px auto; padding: 0 15px; min-height: 60vh; }
-        footer { background: #0f172a; color: #94a3b8; padding: 40px 5% 20px; margin-top: 50px; font-size: 0.9rem; }
+
+        /* Prevent CLS on Main Container */
+        #app-root { max-width: 1200px; margin: 25px auto; padding: 0 15px; min-height: 65vh; width: 100%; flex: 1; }
+
+        /* Image & Card Layout Optimization (Zero CLS) */
+        .product-card, .skeleton-card { min-height: 320px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; }
+        img { max-width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; }
+
+        /* Footer */
+        footer { background: #0f172a; color: #94a3b8; padding: 40px 5% 20px; margin-top: auto; font-size: 0.9rem; }
         .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
         .footer-grid h4 { color: #fff; margin-bottom: 15px; }
+        .footer-bottom { text-align: center; margin-top: 30px; border-top: 1px solid #334155; padding-top: 20px; font-size: 0.8rem; }
+
+        /* Responsive UI Adjustments */
+        @media (max-width: 640px) {
+            .search-box { display: none; } /* Hide search box on tiny mobile screens for cleaner header */
+        }
     </style>
 </head>
 <body>
+
     <header>
         <a href="#" class="logo" onclick="loadPage('pages/home.html')">Inaaya's <span>Mart</span></a>
-        <div><i class="fa-solid fa-cart-shopping"></i> Dynamic Storefront</div>
+        
+        <div class="header-actions">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass" style="color:#94a3b8;"></i>
+                <input type="text" placeholder="Search products...">
+            </div>
+            <div class="cart-btn" onclick="loadPage('pages/cart.html')">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span class="cart-badge" id="cart-count">0</span>
+            </div>
+        </div>
     </header>
+
     <nav class="nav-bar" id="main-nav"></nav>
 
     <main id="app-root">
-        <p style="text-align:center; padding: 50px;">Loading Inaaya's Mart Shell Environment...</p>
+        <!-- Skeleton UI for Initial Loading -->
+        <div style="text-align:center; padding: 60px 20px;">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#0284c7;"></i>
+            <p style="margin-top:15px; color:#64748b; font-weight:500;">Loading Inaaya's Mart Environment...</p>
+        </div>
     </main>
 
     <footer>
         <div class="footer-grid">
-            <div><h4>Customer Care</h4><p>US & Global Support 24/7</p></div>
-            <div><h4>Inaaya's Mart</h4><p>High-Quality Global Trends</p></div>
-            <div><h4>Secure Checkout</h4><p>Encrypted API & SSL Gateways</p></div>
+            <div>
+                <h4>Customer Care</h4>
+                <p>US & Global Support 24/7</p>
+                <p style="margin-top:5px;">support@inaayasmart.com</p>
+            </div>
+            <div>
+                <h4>Inaaya's Mart</h4>
+                <p>High-Quality Global Trends</p>
+            </div>
+            <div>
+                <h4>Secure Checkout</h4>
+                <p>Encrypted API & SSL Gateways</p>
+            </div>
         </div>
-        <div style="text-align:center; margin-top:30px; border-top: 1px solid #334155; padding-top:20px;">
+        <div class="footer-bottom">
             &copy; 2026 Inaaya's Mart. All Rights Reserved.
         </div>
     </footer>
 
     <script>
+        // Global Cart state counter example
+        let cartItemsCount = 0;
+
         async function initStore() {
             try {
                 const res = await fetch('config.json');
@@ -51,28 +116,48 @@
                 const nav = document.getElementById('main-nav');
                 nav.innerHTML = '';
 
-                config.storefront_routes.filter(r => r.in_menu).forEach(route => {
-                    const a = document.createElement('a');
-                    a.innerText = route.title;
-                    a.onclick = () => loadPage(route.path);
-                    nav.appendChild(a);
-                });
+                // Build Navbar dynamically
+                if (config.storefront_routes && Array.isArray(config.storefront_routes)) {
+                    config.storefront_routes.filter(r => r.in_menu).forEach(route => {
+                        const a = document.createElement('a');
+                        a.innerText = route.title;
+                        a.dataset.path = route.path;
+                        a.onclick = (e) => {
+                            setActiveNav(e.target);
+                            loadPage(route.path, route.title);
+                        };
+                        nav.appendChild(a);
+                    });
+                }
 
-                loadPage('pages/home.html');
+                // Default Home Load
+                loadPage('pages/home.html', 'Home');
             } catch (err) {
                 console.error("Config initialization error:", err);
+                document.getElementById('app-root').innerHTML = '<h2 style="text-align:center; padding:50px;">Store Configuration Error</h2>';
             }
         }
 
-        async function loadPage(path) {
+        function setActiveNav(clickedElement) {
+            document.querySelectorAll('#main-nav a').forEach(el => el.classList.remove('active'));
+            if(clickedElement) clickedElement.classList.add('active');
+        }
+
+        async function loadPage(path, title = null) {
+            const root = document.getElementById('app-root');
             try {
                 const res = await fetch(path);
+                if (!res.ok) throw new Error("Module not found");
+                
                 const html = await res.text();
-                const root = document.getElementById('app-root');
                 root.innerHTML = html;
-                // innerHTML doesn't execute <script> tags, so pages that need their
-                // own JS (like home.html's product loader) get their scripts
-                // re-created and re-appended here so they actually run.
+
+                // Update Browser Title Dynamically
+                if(title) {
+                    document.title = `${title} - Inaaya's Mart`;
+                }
+
+                // Execute embedded scripts inside loaded HTML dynamically
                 root.querySelectorAll('script').forEach(oldScript => {
                     const newScript = document.createElement('script');
                     if (oldScript.src) {
@@ -82,13 +167,15 @@
                     }
                     oldScript.replaceWith(newScript);
                 });
-                window.scrollTo({top:0, behavior:'smooth'});
+
+                window.scrollTo({top: 0, behavior: 'smooth'});
             } catch (err) {
-                document.getElementById('app-root').innerHTML = '<h2>Module coming soon...</h2>';
+                root.innerHTML = '<div style="text-align:center; padding:50px;"><h2>Module coming soon...</h2></div>';
             }
         }
 
-        window.onload = initStore;
+        // Initialize Store when DOM is fully parsed
+        document.addEventListener('DOMContentLoaded', initStore);
     </script>
 </body>
 </html>
