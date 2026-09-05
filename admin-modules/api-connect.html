@@ -1,0 +1,289 @@
+<div id="api-connect-module">
+  <h2>External API &amp; e-Processing Integrations</h2>
+  <p style="margin-top:6px; color:#94a3b8;">Configure media hosting, payment processing, and the repo auto-scan bridge. Everything below is saved locally in this browser for now — see the note at the bottom for wiring it to a real database.</p>
+
+  <!-- ===== Cloudinary ===== -->
+  <section class="ac-card">
+    <div class="ac-card-head">
+      <h3><i class="fa-solid fa-cloud-arrow-up"></i> Cloudinary (Media Hosting)</h3>
+      <span id="ac-cloudinary-status" class="ac-badge ac-badge-off">Not configured</span>
+    </div>
+    <p class="ac-hint">Used for product image uploads from the storefront/admin instead of storing binaries in the repo.</p>
+    <div class="ac-grid">
+      <div class="ac-field">
+        <label>Cloud Name</label>
+        <input type="text" id="ac-cloud-name" placeholder="e.g. dxy4example">
+      </div>
+      <div class="ac-field">
+        <label>Unsigned Upload Preset</label>
+        <input type="text" id="ac-upload-preset" placeholder="e.g. store_products_unsigned">
+      </div>
+    </div>
+    <div class="ac-actions">
+      <button class="ac-btn ac-btn-primary" onclick="ApiConnect.saveCloudinary()">Save</button>
+      <button class="ac-btn" onclick="ApiConnect.testCloudinary()">Test Connection</button>
+    </div>
+    <div id="ac-cloudinary-result" class="ac-result"></div>
+  </section>
+
+  <!-- ===== Payment Gateway ===== -->
+  <section class="ac-card">
+    <div class="ac-card-head">
+      <h3><i class="fa-solid fa-credit-card"></i> Payment Gateway</h3>
+      <span id="ac-stripe-status" class="ac-badge ac-badge-off">Not configured</span>
+    </div>
+    <p class="ac-hint">Only the publishable key belongs in client-side config. Secret keys must live in a server/Worker environment variable — never paste one here.</p>
+    <div class="ac-grid">
+      <div class="ac-field">
+        <label>Provider</label>
+        <select id="ac-provider">
+          <option value="stripe">Stripe</option>
+          <option value="paypal">PayPal</option>
+        </select>
+      </div>
+      <div class="ac-field">
+        <label>Publishable / Client Key</label>
+        <input type="text" id="ac-pub-key" placeholder="pk_live_... or client ID">
+      </div>
+    </div>
+    <div class="ac-actions">
+      <button class="ac-btn ac-btn-primary" onclick="ApiConnect.savePayment()">Save</button>
+    </div>
+    <div id="ac-payment-result" class="ac-result"></div>
+  </section>
+
+  <!-- ===== Auto-Scan Worker ===== -->
+  <section class="ac-card">
+    <div class="ac-card-head">
+      <h3><i class="fa-solid fa-magnifying-glass-arrow-right"></i> Repo Auto-Scan (Cloudflare Worker)</h3>
+      <span id="ac-worker-status" class="ac-badge ac-badge-off">Not connected</span>
+    </div>
+    <p class="ac-hint">
+      A static host can't list its own folders at runtime, so this Worker is the bridge: it calls the GitHub Contents API
+      for <code>admin-modules/</code> and <code>pages/</code> and returns a plain JSON list of files, so new files dropped
+      into the repo can be found automatically instead of hand-edited into <code>config.json</code>.
+      Deploy <code>workers/repo-scanner.js</code> (included in this build) to Cloudflare Workers with a
+      <code>GITHUB_TOKEN</code> secret, then paste its URL below.
+    </p>
+    <div class="ac-grid">
+      <div class="ac-field">
+        <label>Worker URL</label>
+        <input type="text" id="ac-worker-url" placeholder="https://repo-scanner.yourname.workers.dev">
+      </div>
+      <div class="ac-field">
+        <label>GitHub Repo (owner/name)</label>
+        <input type="text" id="ac-gh-repo" placeholder="e.g. yourname/E-commerce-website">
+      </div>
+    </div>
+    <div class="ac-actions">
+      <button class="ac-btn ac-btn-primary" onclick="ApiConnect.saveWorker()">Save</button>
+      <button class="ac-btn" onclick="ApiConnect.scanNow()">Scan Now</button>
+    </div>
+    <div id="ac-worker-result" class="ac-result"></div>
+    <div id="ac-scan-results"></div>
+  </section>
+
+  <p class="ac-footnote">
+    <i class="fa-solid fa-circle-info"></i>
+    Everything on this page currently saves to <code>localStorage</code> in your browser (key <code>ic_site_config</code>),
+    so it won't sync across devices or survive a cleared cache. The planned upgrade is a <code>site_config</code> table in
+    a real backend — swap the <code>ApiConnect.storage</code> read/write functions below for real API calls and every
+    save/load call site keeps working unchanged.
+  </p>
+</div>
+
+<style>
+  #api-connect-module { color: #f8fafc; }
+  #api-connect-module h2 { font-size: 1.4rem; }
+  #api-connect-module h3 { font-size: 1.05rem; display:flex; align-items:center; gap:8px; }
+  #api-connect-module code { background:#0f172a; padding:2px 6px; border-radius:4px; font-size:0.85em; color:#38bdf8; }
+  .ac-card { background:#1e293b; border:1px solid #334155; border-radius:8px; padding:20px; margin-top:20px; max-width:640px; }
+  .ac-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .ac-hint { color:#94a3b8; font-size:0.9rem; margin:8px 0 16px; line-height:1.5; }
+  .ac-grid { display:grid; grid-template-columns: 1fr 1fr; gap:15px; }
+  .ac-field label { display:block; margin-bottom:5px; font-size:0.9rem; color:#cbd5e1; }
+  .ac-field input, .ac-field select {
+    width:100%; padding:10px; border-radius:4px; border:1px solid #334155; background:#0f172a; color:#fff; font-size:0.95rem;
+  }
+  .ac-field input:focus, .ac-field select:focus { outline:1px solid #0284c7; }
+  .ac-actions { display:flex; gap:10px; margin-top:16px; }
+  .ac-btn { background:#334155; color:#f8fafc; padding:10px 18px; border:none; border-radius:4px; cursor:pointer; font-size:0.9rem; }
+  .ac-btn:hover { background:#475569; }
+  .ac-btn-primary { background:#0284c7; }
+  .ac-btn-primary:hover { background:#0369a1; }
+  .ac-badge { font-size:0.75rem; padding:4px 10px; border-radius:999px; font-weight:600; }
+  .ac-badge-off { background:#334155; color:#94a3b8; }
+  .ac-badge-on { background:#14532d; color:#4ade80; }
+  .ac-badge-error { background:#450a0a; color:#f87171; }
+  .ac-result { margin-top:12px; font-size:0.88rem; min-height:1.2em; }
+  .ac-result.ok { color:#4ade80; }
+  .ac-result.err { color:#f87171; }
+  .ac-scan-item {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:#0f172a; border:1px solid #334155; border-radius:6px; padding:10px 14px; margin-top:8px; font-size:0.9rem;
+  }
+  .ac-scan-item .path { color:#38bdf8; font-family:monospace; }
+  .ac-footnote { margin-top:24px; max-width:640px; color:#64748b; font-size:0.82rem; line-height:1.6; }
+  .ac-footnote i { margin-right:4px; }
+</style>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'ic_site_config';
+
+  function readConfig() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch { return {}; }
+  }
+  function writeConfig(patch) {
+    const current = readConfig();
+    const next = Object.assign({}, current, patch);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    return next;
+  }
+  function setBadge(id, state, label) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'ac-badge ' + (state === 'on' ? 'ac-badge-on' : state === 'error' ? 'ac-badge-error' : 'ac-badge-off');
+    el.textContent = label;
+  }
+  function setResult(id, message, ok) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = message;
+    el.className = 'ac-result ' + (ok ? 'ok' : 'err');
+  }
+
+  function hydrate() {
+    const cfg = readConfig();
+    if (cfg.cloudinary) {
+      document.getElementById('ac-cloud-name').value = cfg.cloudinary.cloudName || '';
+      document.getElementById('ac-upload-preset').value = cfg.cloudinary.uploadPreset || '';
+      if (cfg.cloudinary.cloudName && cfg.cloudinary.uploadPreset) setBadge('ac-cloudinary-status', 'on', 'Configured');
+    }
+    if (cfg.payment) {
+      document.getElementById('ac-provider').value = cfg.payment.provider || 'stripe';
+      document.getElementById('ac-pub-key').value = cfg.payment.publicKey || '';
+      if (cfg.payment.publicKey) setBadge('ac-stripe-status', 'on', 'Configured');
+    }
+    if (cfg.worker) {
+      document.getElementById('ac-worker-url').value = cfg.worker.url || '';
+      document.getElementById('ac-gh-repo').value = cfg.worker.repo || '';
+      if (cfg.worker.url) setBadge('ac-worker-status', 'on', 'Configured');
+    }
+  }
+
+  const ApiConnect = {
+    storage: { read: readConfig, write: writeConfig },
+
+    saveCloudinary() {
+      const cloudName = document.getElementById('ac-cloud-name').value.trim();
+      const uploadPreset = document.getElementById('ac-upload-preset').value.trim();
+      if (!cloudName || !uploadPreset) {
+        setResult('ac-cloudinary-result', 'Both fields are required.', false);
+        return;
+      }
+      writeConfig({ cloudinary: { cloudName, uploadPreset } });
+      setBadge('ac-cloudinary-status', 'on', 'Configured');
+      setResult('ac-cloudinary-result', 'Saved locally.', true);
+    },
+
+    async testCloudinary() {
+      const cloudName = document.getElementById('ac-cloud-name').value.trim();
+      const uploadPreset = document.getElementById('ac-upload-preset').value.trim();
+      if (!cloudName || !uploadPreset) {
+        setResult('ac-cloudinary-result', 'Enter both fields before testing.', false);
+        return;
+      }
+      setResult('ac-cloudinary-result', 'Testing...', true);
+      try {
+        const url = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`;
+        const res = await fetch(url, { method: 'POST', body: new FormData() });
+        if (res.status) {
+          setResult('ac-cloudinary-result', `Cloud name reachable (HTTP ${res.status}). Try a real upload from the storefront to confirm the preset works.`, true);
+          setBadge('ac-cloudinary-status', 'on', 'Reachable');
+        }
+      } catch (err) {
+        setResult('ac-cloudinary-result', 'Could not reach Cloudinary — check the cloud name.', false);
+        setBadge('ac-cloudinary-status', 'error', 'Unreachable');
+      }
+    },
+
+    savePayment() {
+      const provider = document.getElementById('ac-provider').value;
+      const publicKey = document.getElementById('ac-pub-key').value.trim();
+      if (!publicKey) {
+        setResult('ac-payment-result', 'Enter a publishable/client key.', false);
+        return;
+      }
+      if (/^(sk_|rk_)/i.test(publicKey)) {
+        setResult('ac-payment-result', 'That looks like a SECRET key — do not store it here. Use a publishable key (pk_...) instead.', false);
+        setBadge('ac-stripe-status', 'error', 'Blocked');
+        return;
+      }
+      writeConfig({ payment: { provider, publicKey } });
+      setBadge('ac-stripe-status', 'on', 'Configured');
+      setResult('ac-payment-result', 'Saved locally.', true);
+    },
+
+    saveWorker() {
+      const url = document.getElementById('ac-worker-url').value.trim();
+      const repo = document.getElementById('ac-gh-repo').value.trim();
+      if (!url || !repo) {
+        setResult('ac-worker-result', 'Both fields are required.', false);
+        return;
+      }
+      writeConfig({ worker: { url, repo } });
+      setBadge('ac-worker-status', 'on', 'Configured');
+      setResult('ac-worker-result', 'Saved locally.', true);
+    },
+
+    async scanNow() {
+      const cfg = readConfig();
+      const url = (cfg.worker && cfg.worker.url) || document.getElementById('ac-worker-url').value.trim();
+      const repo = (cfg.worker && cfg.worker.repo) || document.getElementById('ac-gh-repo').value.trim();
+      const resultsEl = document.getElementById('ac-scan-results');
+      resultsEl.innerHTML = '';
+      if (!url || !repo) {
+        setResult('ac-worker-result', 'Save the Worker URL and repo first.', false);
+        return;
+      }
+      setResult('ac-worker-result', 'Scanning...', true);
+      try {
+        const res = await fetch(`${url}?repo=${encodeURIComponent(repo)}`);
+        if (!res.ok) throw new Error(`Worker returned HTTP ${res.status}`);
+        const data = await res.json(); // expected: { files: [{ path, folder }] }
+        const files = data.files || [];
+        if (files.length === 0) {
+          setResult('ac-worker-result', 'Scan complete — no new files found.', true);
+          return;
+        }
+        setResult('ac-worker-result', `Found ${files.length} file(s). Register any you want added to config.json:`, true);
+        files.forEach(f => {
+          const row = document.createElement('div');
+          row.className = 'ac-scan-item';
+          row.innerHTML = `<span class="path">${f.path}</span>`;
+          const btn = document.createElement('button');
+          btn.className = 'ac-btn';
+          btn.textContent = 'Register';
+          btn.onclick = () => {
+            const staged = readConfig().staged_routes || [];
+            staged.push(f.path);
+            writeConfig({ staged_routes: staged });
+            btn.textContent = 'Staged ✓';
+            btn.disabled = true;
+          };
+          row.appendChild(btn);
+          resultsEl.appendChild(row);
+        });
+      } catch (err) {
+        setResult('ac-worker-result', `Scan failed: ${err.message}. Check the Worker URL and that CORS is enabled on it.`, false);
+        setBadge('ac-worker-status', 'error', 'Error');
+      }
+    }
+  };
+
+  window.ApiConnect = ApiConnect;
+  hydrate();
+})();
+</script>
