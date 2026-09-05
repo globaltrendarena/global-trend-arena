@@ -10,22 +10,22 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
-    <!-- FontAwesome with Media Print Trick for Non-blocking CSS Load -->
+    <!-- FontAwesome Non-blocking CSS Load -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
 
-    <!-- External JS Scripts with defer (Non-blocking) -->
+    <!-- External JS Scripts with defer -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="js/supabase-client.js" defer></script>
 
     <style>
-        /* CSS Reset & Base Performance Rules */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background: #f8fafc; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; }
         
         /* Header Optimization */
         header { background: #fff; padding: 12px 5%; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .logo { font-size: 1.5rem; font-weight: 700; color: #0284c7; text-decoration: none; }
+        .logo span { color: #0f172a; }
         .header-actions { display: flex; align-items: center; gap: 15px; }
         .search-box { display: flex; align-items: center; background: #f1f5f9; padding: 6px 12px; border-radius: 20px; border: 1px solid #cbd5e1; }
         .search-box input { border: none; background: transparent; outline: none; padding-left: 8px; font-size: 0.85rem; color: #334155; }
@@ -38,10 +38,10 @@
         .nav-bar a { color: #94a3b8; text-decoration: none; padding: 12px 5px; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s ease; }
         .nav-bar a:hover, .nav-bar a.active { color: #38bdf8; border-bottom-color: #38bdf8; }
 
-        /* Prevent CLS on Main Container */
+        /* App Root (Zero CLS Container) */
         #app-root { max-width: 1200px; margin: 25px auto; padding: 0 15px; min-height: 65vh; width: 100%; flex: 1; }
 
-        /* Image & Card Layout Optimization (Zero CLS) */
+        /* Card & Image Reset */
         .product-card, .skeleton-card { min-height: 320px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; }
         img { max-width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; }
 
@@ -51,23 +51,22 @@
         .footer-grid h4 { color: #fff; margin-bottom: 15px; }
         .footer-bottom { text-align: center; margin-top: 30px; border-top: 1px solid #334155; padding-top: 20px; font-size: 0.8rem; }
 
-        /* Responsive UI Adjustments */
         @media (max-width: 640px) {
-            .search-box { display: none; } /* Hide search box on tiny mobile screens for cleaner header */
+            .search-box { display: none; }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <a href="#" class="logo" onclick="loadPage('pages/home.html')">Inaaya's <span>Mart</span></a>
+        <a href="#pages/home.html" class="logo">Inaaya's <span>Mart</span></a>
         
         <div class="header-actions">
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass" style="color:#94a3b8;"></i>
-                <input type="text" placeholder="Search products...">
+                <input type="text" id="search-input" placeholder="Search products..." onkeypress="handleSearch(event)">
             </div>
-            <div class="cart-btn" onclick="loadPage('pages/cart.html')">
+            <div class="cart-btn" onclick="navigateTo('pages/cart.html', 'Cart')">
                 <i class="fa-solid fa-cart-shopping"></i>
                 <span class="cart-badge" id="cart-count">0</span>
             </div>
@@ -77,7 +76,6 @@
     <nav class="nav-bar" id="main-nav"></nav>
 
     <main id="app-root">
-        <!-- Skeleton UI for Initial Loading -->
         <div style="text-align:center; padding: 60px 20px;">
             <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#0284c7;"></i>
             <p style="margin-top:15px; color:#64748b; font-weight:500;">Loading Inaaya's Mart Environment...</p>
@@ -106,41 +104,56 @@
     </footer>
 
     <script>
-        // Global Cart state counter example
-        let cartItemsCount = 0;
+        let storeConfig = null;
 
         async function initStore() {
             try {
                 const res = await fetch('config.json');
-                const config = await res.json();
+                storeConfig = await res.json();
                 const nav = document.getElementById('main-nav');
                 nav.innerHTML = '';
 
-                // Build Navbar dynamically
-                if (config.storefront_routes && Array.isArray(config.storefront_routes)) {
-                    config.storefront_routes.filter(r => r.in_menu).forEach(route => {
+                if (storeConfig.storefront_routes && Array.isArray(storeConfig.storefront_routes)) {
+                    storeConfig.storefront_routes.filter(r => r.in_menu).forEach(route => {
                         const a = document.createElement('a');
                         a.innerText = route.title;
+                        a.href = `#${route.path}`;
                         a.dataset.path = route.path;
-                        a.onclick = (e) => {
-                            setActiveNav(e.target);
-                            loadPage(route.path, route.title);
-                        };
                         nav.appendChild(a);
                     });
                 }
 
-                // Default Home Load
-                loadPage('pages/home.html', 'Home');
+                updateCartCount();
+                handleHashRoute();
             } catch (err) {
                 console.error("Config initialization error:", err);
                 document.getElementById('app-root').innerHTML = '<h2 style="text-align:center; padding:50px;">Store Configuration Error</h2>';
             }
         }
 
-        function setActiveNav(clickedElement) {
-            document.querySelectorAll('#main-nav a').forEach(el => el.classList.remove('active'));
-            if(clickedElement) clickedElement.classList.add('active');
+        function handleHashRoute() {
+            const hash = window.location.hash.replace('#', '');
+            let targetPath = hash || 'pages/home.html';
+            
+            let matchedRoute = storeConfig?.storefront_routes?.find(r => r.path === targetPath);
+            let title = matchedRoute ? matchedRoute.title : 'Store';
+
+            setActiveNav(targetPath);
+            loadPage(targetPath, title);
+        }
+
+        function setActiveNav(path) {
+            document.querySelectorAll('#main-nav a').forEach(el => {
+                if (el.dataset.path === path) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+        }
+
+        function navigateTo(path, title) {
+            window.location.hash = path;
         }
 
         async function loadPage(path, title = null) {
@@ -152,12 +165,10 @@
                 const html = await res.text();
                 root.innerHTML = html;
 
-                // Update Browser Title Dynamically
-                if(title) {
+                if (title) {
                     document.title = `${title} - Inaaya's Mart`;
                 }
 
-                // Execute embedded scripts inside loaded HTML dynamically
                 root.querySelectorAll('script').forEach(oldScript => {
                     const newScript = document.createElement('script');
                     if (oldScript.src) {
@@ -174,7 +185,22 @@
             }
         }
 
-        // Initialize Store when DOM is fully parsed
+        function updateCartCount() {
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            const badge = document.getElementById('cart-count');
+            if (badge) badge.innerText = cart.length;
+        }
+
+        function handleSearch(e) {
+            if (e.key === 'Enter') {
+                const query = e.target.value.trim();
+                if (query) {
+                    navigateTo(`pages/search.html?q=${encodeURIComponent(query)}`, 'Search');
+                }
+            }
+        }
+
+        window.addEventListener('hashchange', handleHashRoute);
         document.addEventListener('DOMContentLoaded', initStore);
     </script>
 </body>
