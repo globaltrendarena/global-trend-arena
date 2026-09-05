@@ -10,8 +10,8 @@
         ]
     },
     "supabase": {
-        "url": "YOUR_SUPABASE_URL",
-        "anonKey": "YOUR_SUPABASE_ANON_KEY"
+        "url": "https://cwgmpvnzswqgebdbxvsk.supabase.co",
+        "anonKey": "sb_publishable_s5oO321aZeREBBaZfnKWMg_bh0m0G2K"
     },
     "storefront_routes": [
         { "id": "home", "title": "Home", "path": "pages/home.html", "in_menu": true },
