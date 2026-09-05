@@ -1,0 +1,28 @@
+{
+    "site_info": {
+        "title": "Inaaya's Mart",
+        "currency": "USD",
+        "target_markets": [
+            "US",
+            "UK",
+            "CA",
+            "AU"
+        ]
+    },
+    "supabase": {
+        "url": "YOUR_SUPABASE_URL",
+        "anonKey": "YOUR_SUPABASE_ANON_KEY"
+    },
+    "storefront_routes": [
+        { "id": "home", "title": "Home", "path": "pages/home.html", "in_menu": true },
+        { "id": "pet-care", "title": "Pet Care", "path": "pages/pet-care.html", "in_menu": true },
+        { "id": "home-decor", "title": "Home Decor", "path": "pages/home-decor.html", "in_menu": true },
+        { "id": "checkout", "title": "Checkout", "path": "pages/checkout.html", "in_menu": false },
+        { "id": "privacy", "title": "Privacy Policy", "path": "pages/privacy.html", "in_menu": false }
+    ],
+    "admin_modules": [
+        { "id": "analytics", "title": "High-CPC Analytics", "path": "admin-modules/analytics.html" },
+        { "id": "api-connect", "title": "API & Payment Gateway", "path": "admin-modules/api-connect.html" },
+        { "id": "injector", "title": "Module Injector", "path": "admin-modules/feature-injector.html" }
+    ]
+}

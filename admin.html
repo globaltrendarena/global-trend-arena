@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inaaya's Mart - Control Center</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: #0f172a; color: #f8fafc; height: 100vh; overflow: hidden; }
+
+        /* ---- Login screen ---- */
+        #login-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
+        #login-box { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 32px; width: 340px; }
+        #login-box h1 { font-size: 1.2rem; color: #38bdf8; margin-bottom: 4px; }
+        #login-box p.sub { color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px; }
+        #login-box label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 5px; }
+        #login-box input { width: 100%; padding: 10px; margin-bottom: 14px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff; }
+        #login-box button { width: 100%; background: #0284c7; color: #fff; padding: 11px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; }
+        #login-box button:hover { background: #0369a1; }
+        #login-box button:disabled { opacity: 0.6; cursor: not-allowed; }
+        #login-status { margin-top: 12px; font-size: 0.85rem; min-height: 1.2em; }
+        #login-status.err { color: #f87171; }
+        #login-status.ok { color: #4ade80; }
+        #login-status.info { color: #94a3b8; }
+
+        /* ---- Admin shell (same as before) ---- */
+        #admin-shell { display: none; height: 100vh; }
+        #admin-shell.visible { display: flex; }
+        .sidebar { width: 260px; background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 20px; font-weight: bold; color: #38bdf8; border-bottom: 1px solid #334155; }
+        .sidebar-user { padding: 12px 20px; border-bottom: 1px solid #334155; font-size: 0.8rem; color: #94a3b8; }
+        .sidebar-user a { color: #38bdf8; cursor: pointer; text-decoration: underline; }
+        .nav-list { list-style: none; padding: 15px 10px; flex-grow: 1; overflow-y: auto; }
+        .nav-item { padding: 12px; color: #94a3b8; border-radius: 6px; cursor: pointer; margin-bottom: 4px; }
+        .nav-item:hover, .nav-item.active { background: #0284c7; color: #fff; }
+        .main { flex-grow: 1; padding: 30px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <!-- ===== Login screen ===== -->
+    <div id="login-screen">
+        <div id="login-box">
+            <h1><i class="fa-solid fa-sliders"></i> Admin Control Center</h1>
+            <p class="sub">Sign in with an account marked <code>role = 'admin'</code> in Supabase.</p>
+            <label>Email</label>
+            <input type="email" id="login-email" autocomplete="username">
+            <label>Password</label>
+            <input type="password" id="login-password" autocomplete="current-password">
+            <button id="login-btn" onclick="AdminAuth.signIn()">Sign In</button>
+            <div id="login-status" class="info">Checking session…</div>
+        </div>
+    </div>
+
+    <!-- ===== Admin shell (hidden until an admin session is confirmed) ===== -->
+    <div id="admin-shell">
+        <aside class="sidebar">
+            <div class="sidebar-header"><i class="fa-solid fa-sliders"></i> Admin Control Center</div>
+            <div class="sidebar-user">
+                Signed in as <strong id="sidebar-user-email">—</strong><br>
+                <a onclick="AdminAuth.signOut()">Sign out</a>
+            </div>
+            <ul class="nav-list" id="admin-nav"></ul>
+        </aside>
+        <main class="main" id="admin-root">
+            <h2>Loading Admin Suite...</h2>
+        </main>
+    </div>
+
+    <script>
+        function showLogin(message, statusClass) {
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('admin-shell').classList.remove('visible');
+            if (message !== undefined) {
+                const el = document.getElementById('login-status');
+                el.textContent = message;
+                el.className = statusClass || 'info';
+            }
+        }
+
+        function showAdminShell(email) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('admin-shell').classList.add('visible');
+            document.getElementById('sidebar-user-email').textContent = email;
+        }
+
+        const AdminAuth = {
+            async init() {
+                await window.sbReady;
+                if (!window.sbConfigured) {
+                    showLogin('Supabase isn\'t configured yet — add supabase.url / supabase.anonKey to config.json.', 'err');
+                    document.getElementById('login-btn').disabled = true;
+                    return;
+                }
+                const { data: { session } } = await window.sb.auth.getSession();
+                if (session) {
+                    await this.checkAdminAndEnter(session);
+                } else {
+                    showLogin('', 'info');
+                }
+            },
+
+            async signIn() {
+                if (!window.sbConfigured) return;
+                const email = document.getElementById('login-email').value.trim();
+                const password = document.getElementById('login-password').value;
+                const btn = document.getElementById('login-btn');
+                if (!email || !password) {
+                    showLogin('Enter both email and password.', 'err');
+                    return;
+                }
+                btn.disabled = true;
+                showLogin('Signing in…', 'info');
+                const { data, error } = await window.sb.auth.signInWithPassword({ email, password });
+                btn.disabled = false;
+                if (error) {
+                    showLogin(error.message, 'err');
+                    return;
+                }
+                await this.checkAdminAndEnter(data.session);
+            },
+
+            async checkAdminAndEnter(session) {
+                showLogin('Checking permissions…', 'info');
+                const { data: profile, error } = await window.sb
+                    .from('profiles')
+                    .select('role, email')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (error) {
+                    showLogin('Could not load your profile: ' + error.message, 'err');
+                    return;
+                }
+                if (profile.role !== 'admin') {
+                    showLogin('This account is signed in but is not an admin. Ask an existing admin to promote it, or run: update public.profiles set role = \'admin\' where email = \'' + profile.email + '\';', 'err');
+                    await window.sb.auth.signOut();
+                    return;
+                }
+                showAdminShell(profile.email);
+                initAdmin();
+            },
+
+            async signOut() {
+                if (window.sbConfigured) await window.sb.auth.signOut();
+                document.getElementById('login-email').value = '';
+                document.getElementById('login-password').value = '';
+                showLogin('Signed out.', 'info');
+            }
+        };
+        window.AdminAuth = AdminAuth;
+
+        async function initAdmin() {
+            try {
+                const res = await fetch('config.json');
+                const config = await res.json();
+                const nav = document.getElementById('admin-nav');
+                nav.innerHTML = '';
+
+                config.admin_modules.forEach((mod, idx) => {
+                    const li = document.createElement('li');
+                    li.className = 'nav-item' + (idx === 0 ? ' active' : '');
+                    li.innerText = mod.title;
+                    li.onclick = (e) => {
+                        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                        li.classList.add('active');
+                        loadModule(mod.path);
+                    };
+                    nav.appendChild(li);
+                });
+
+                if (config.admin_modules.length > 0) loadModule(config.admin_modules[0].path);
+            } catch (err) {
+                console.error("Admin init error:", err);
+            }
+        }
+
+        async function loadModule(path) {
+            try {
+                const res = await fetch(path);
+                const html = await res.text();
+                const root = document.getElementById('admin-root');
+                root.innerHTML = html;
+                // innerHTML does not execute <script> tags, so modules that need
+                // their own JS (like api-connect.html) get their scripts re-created
+                // and re-appended here so they actually run.
+                root.querySelectorAll('script').forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                    } else {
+                        newScript.textContent = oldScript.textContent;
+                    }
+                    oldScript.replaceWith(newScript);
+                });
+            } catch (err) {
+                document.getElementById('admin-root').innerHTML = '<h2>Module load failed.</h2>';
+            }
+        }
+
+        window.onload = () => AdminAuth.init();
+    </script>
+</body>
+</html>

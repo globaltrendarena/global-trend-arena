@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inaaya's Mart - Global Premium Store</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f8fafc; color: #1e293b; }
+        header { background: #fff; padding: 15px 5%; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; sticky: top; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: #0284c7; text-decoration: none; }
+        .nav-bar { background: #0f172a; padding: 0 5%; display: flex; gap: 20px; overflow-x: auto; }
+        .nav-bar a { color: #94a3b8; text-decoration: none; padding: 12px 0; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; }
+        .nav-bar a:hover, .nav-bar a.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+        #app-root { max-width: 1200px; margin: 25px auto; padding: 0 15px; min-height: 60vh; }
+        footer { background: #0f172a; color: #94a3b8; padding: 40px 5% 20px; margin-top: 50px; font-size: 0.9rem; }
+        .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
+        .footer-grid h4 { color: #fff; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="#" class="logo" onclick="loadPage('pages/home.html')">Inaaya's <span>Mart</span></a>
+        <div><i class="fa-solid fa-cart-shopping"></i> Dynamic Storefront</div>
+    </header>
+    <nav class="nav-bar" id="main-nav"></nav>
+
+    <main id="app-root">
+        <p style="text-align:center; padding: 50px;">Loading Inaaya's Mart Shell Environment...</p>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div><h4>Customer Care</h4><p>US & Global Support 24/7</p></div>
+            <div><h4>Inaaya's Mart</h4><p>High-Quality Global Trends</p></div>
+            <div><h4>Secure Checkout</h4><p>Encrypted API & SSL Gateways</p></div>
+        </div>
+        <div style="text-align:center; margin-top:30px; border-top: 1px solid #334155; padding-top:20px;">
+            &copy; 2026 Inaaya's Mart. All Rights Reserved.
+        </div>
+    </footer>
+
+    <script>
+        async function initStore() {
+            try {
+                const res = await fetch('config.json');
+                const config = await res.json();
+                const nav = document.getElementById('main-nav');
+                nav.innerHTML = '';
+
+                config.storefront_routes.filter(r => r.in_menu).forEach(route => {
+                    const a = document.createElement('a');
+                    a.innerText = route.title;
+                    a.onclick = () => loadPage(route.path);
+                    nav.appendChild(a);
+                });
+
+                loadPage('pages/home.html');
+            } catch (err) {
+                console.error("Config initialization error:", err);
+            }
+        }
+
+        async function loadPage(path) {
+            try {
+                const res = await fetch(path);
+                const html = await res.text();
+                const root = document.getElementById('app-root');
+                root.innerHTML = html;
+                // innerHTML doesn't execute <script> tags, so pages that need their
+                // own JS (like home.html's product loader) get their scripts
+                // re-created and re-appended here so they actually run.
+                root.querySelectorAll('script').forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                    } else {
+                        newScript.textContent = oldScript.textContent;
+                    }
+                    oldScript.replaceWith(newScript);
+                });
+                window.scrollTo({top:0, behavior:'smooth'});
+            } catch (err) {
+                document.getElementById('app-root').innerHTML = '<h2>Module coming soon...</h2>';
+            }
+        }
+
+        window.onload = initStore;
+    </script>
+</body>
+</html>
