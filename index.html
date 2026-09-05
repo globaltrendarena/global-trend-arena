@@ -6,7 +6,7 @@
     <title>Inaaya's Mart - Global Premium Store</title>
     <meta name="description" content="Shop the latest global trends with fast shipping and secure checkout at Inaaya's Mart.">
 
-    <!-- Preconnect for External CDNs (Speed Optimization) -->
+    <!-- Preconnect for External CDNs -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
 
-    <!-- External JS Scripts with defer -->
+    <!-- External JS Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="js/supabase-client.js" defer></script>
 
@@ -24,7 +24,7 @@
         
         /* Header Optimization */
         header { background: #fff; padding: 12px 5%; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-        .logo { font-size: 1.5rem; font-weight: 700; color: #0284c7; text-decoration: none; }
+        .logo { font-size: 1.5rem; font-weight: 700; color: #0284c7; text-decoration: none; cursor: pointer; }
         .logo span { color: #0f172a; }
         .header-actions { display: flex; align-items: center; gap: 15px; }
         .search-box { display: flex; align-items: center; background: #f1f5f9; padding: 6px 12px; border-radius: 20px; border: 1px solid #cbd5e1; }
@@ -38,12 +38,8 @@
         .nav-bar a { color: #94a3b8; text-decoration: none; padding: 12px 5px; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s ease; }
         .nav-bar a:hover, .nav-bar a.active { color: #38bdf8; border-bottom-color: #38bdf8; }
 
-        /* App Root (Zero CLS Container) */
+        /* App Root Container */
         #app-root { max-width: 1200px; margin: 25px auto; padding: 0 15px; min-height: 65vh; width: 100%; flex: 1; }
-
-        /* Card & Image Reset */
-        .product-card, .skeleton-card { min-height: 320px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; }
-        img { max-width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; }
 
         /* Footer */
         footer { background: #0f172a; color: #94a3b8; padding: 40px 5% 20px; margin-top: auto; font-size: 0.9rem; }
@@ -59,14 +55,14 @@
 <body>
 
     <header>
-        <a href="#pages/home.html" class="logo">Inaaya's <span>Mart</span></a>
+        <a onclick="navigateTo('/', 'pages/home.html', 'Home')" class="logo">Inaaya's <span>Mart</span></a>
         
         <div class="header-actions">
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass" style="color:#94a3b8;"></i>
                 <input type="text" id="search-input" placeholder="Search products..." onkeypress="handleSearch(event)">
             </div>
-            <div class="cart-btn" onclick="navigateTo('pages/cart.html', 'Cart')">
+            <div class="cart-btn" onclick="navigateTo('/cart', 'pages/cart.html', 'Cart')">
                 <i class="fa-solid fa-cart-shopping"></i>
                 <span class="cart-badge" id="cart-count">0</span>
             </div>
@@ -106,6 +102,12 @@
     <script>
         let storeConfig = null;
 
+        // Path to Clean URL mapping helper
+        function getCleanUrlPath(filePath) {
+            let clean = filePath.replace('pages/', '').replace('.html', '');
+            return clean === 'home' ? '/' : `/${clean}`;
+        }
+
         async function initStore() {
             try {
                 const res = await fetch('config.json');
@@ -115,45 +117,52 @@
 
                 if (storeConfig.storefront_routes && Array.isArray(storeConfig.storefront_routes)) {
                     storeConfig.storefront_routes.filter(r => r.in_menu).forEach(route => {
+                        const cleanUrl = getCleanUrlPath(route.path);
                         const a = document.createElement('a');
                         a.innerText = route.title;
-                        a.href = `#${route.path}`;
-                        a.dataset.path = route.path;
+                        a.href = cleanUrl;
+                        a.dataset.path = cleanUrl;
+                        a.onclick = (e) => {
+                            e.preventDefault();
+                            navigateTo(cleanUrl, route.path, route.title);
+                        };
                         nav.appendChild(a);
                     });
                 }
 
                 updateCartCount();
-                handleHashRoute();
+                handlePopState();
             } catch (err) {
                 console.error("Config initialization error:", err);
                 document.getElementById('app-root').innerHTML = '<h2 style="text-align:center; padding:50px;">Store Configuration Error</h2>';
             }
         }
 
-        function handleHashRoute() {
-            const hash = window.location.hash.replace('#', '');
-            let targetPath = hash || 'pages/home.html';
-            
-            let matchedRoute = storeConfig?.storefront_routes?.find(r => r.path === targetPath);
-            let title = matchedRoute ? matchedRoute.title : 'Store';
-
-            setActiveNav(targetPath);
-            loadPage(targetPath, title);
+        function navigateTo(cleanUrl, htmlPath, title) {
+            window.history.pushState({ cleanUrl, htmlPath, title }, '', cleanUrl);
+            setActiveNav(cleanUrl);
+            loadPage(htmlPath, title);
         }
 
-        function setActiveNav(path) {
+        function handlePopState() {
+            const currentPath = window.location.pathname;
+            let targetRoute = storeConfig?.storefront_routes?.find(r => getCleanUrlPath(r.path) === currentPath);
+            
+            let htmlPath = targetRoute ? targetRoute.path : (currentPath === '/' ? 'pages/home.html' : `pages${currentPath}.html`);
+            let title = targetRoute ? targetRoute.title : 'Store';
+
+            setActiveNav(currentPath);
+            loadPage(htmlPath, title);
+        }
+
+        function setActiveNav(cleanUrl) {
             document.querySelectorAll('#main-nav a').forEach(el => {
-                if (el.dataset.path === path) {
+                if (el.dataset.path === cleanUrl || (cleanUrl === '/' && el.dataset.path === '/home')) {
                     el.classList.add('active');
                 } else {
                     el.classList.remove('active');
                 }
             });
-        }
-
-        function navigateTo(path, title) {
-            window.location.hash = path;
         }
 
         async function loadPage(path, title = null) {
@@ -195,12 +204,12 @@
             if (e.key === 'Enter') {
                 const query = e.target.value.trim();
                 if (query) {
-                    navigateTo(`pages/search.html?q=${encodeURIComponent(query)}`, 'Search');
+                    navigateTo(`/search?q=${encodeURIComponent(query)}`, 'pages/search.html', 'Search');
                 }
             }
         }
 
-        window.addEventListener('hashchange', handleHashRoute);
+        window.addEventListener('popstate', handlePopState);
         document.addEventListener('DOMContentLoaded', initStore);
     </script>
 </body>
