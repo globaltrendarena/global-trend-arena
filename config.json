@@ -24,5 +24,11 @@
         { "id": "analytics", "title": "High-CPC Analytics", "path": "admin-modules/analytics.html" },
         { "id": "api-connect", "title": "API & Payment Gateway", "path": "admin-modules/api-connect.html" },
         { "id": "injector", "title": "Module Injector", "path": "admin-modules/feature-injector.html" }
-    ]
+    ],
+    "admin_settings": {
+        "repo_scanner": {
+            "worker_url": "https://repo-scanner.updateinformationexpress.workers.dev/",
+            "github_repo": "globaltrendarena/E-commerce-website"
+        }
+    }
 }
