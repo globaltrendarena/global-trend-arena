@@ -1,24 +1,121 @@
-<header class="site-header">
-    <!-- Top Announcement Bar -->
-    <div class="announcement-bar" style="background: #111; color: #fff; text-align: center; padding: 8px; font-size: 13px;">
-        <span>Free Worldwide Shipping on Orders Over $50 | Use Code: <strong>INAAYA50</strong></span>
+<!-- Top Announcement & Utility Bar -->
+<div class="top-bar">
+    <div class="top-bar-content">
+        <span><i class="fa-solid fa-earth-americas"></i> Global Express Shipping & Secure 24/7 Support</span>
+        <div class="top-bar-links">
+            <a onclick="navigateTo('/track-order', 'pages/track-order.html', 'Track Order')"><i class="fa-solid fa-truck-fast"></i> Track Order</a>
+            <a onclick="navigateTo('/help', 'pages/help.html', 'Help Center')"><i class="fa-solid fa-circle-question"></i> Help</a>
+        </div>
     </div>
+</div>
 
-    <!-- Main Navigation Bar -->
-    <nav class="navbar" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: #fff; border-bottom: 1px solid #eaeaea;">
-        <div class="logo">
-            <a href="/" style="font-size: 24px; font-weight: bold; text-decoration: none; color: #333;">Inaaya's Mart</a>
+<!-- Main Header -->
+<header class="main-header">
+    <div class="header-container">
+        <!-- Brand Logo -->
+        <a onclick="navigateTo('/', 'pages/home.html', 'Home')" class="logo">
+            Inaaya's <span>Mart</span>
+        </a>
+        
+        <!-- Advanced Search Bar -->
+        <div class="header-search-bar">
+            <select id="search-category" class="search-category-select">
+                <option value="all">All Categories</option>
+                <option value="home-decor">Home Decor</option>
+                <option value="pet-care">Pet Care</option>
+                <option value="electronics">Electronics</option>
+            </select>
+            <input type="text" id="search-input" placeholder="Search global trends, products, brands..." onkeypress="handleSearch(event)">
+            <button class="search-btn" onclick="triggerSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
         </div>
 
-        <div class="nav-links" style="display: flex; gap: 20px; list-style: none;">
-            <a href="/" style="text-decoration: none; color: #555; font-weight: 500;">Home</a>
-            <a href="pages/pet-care.html" style="text-decoration: none; color: #555; font-weight: 500;">Pet Care</a>
-            <a href="pages/home-decor.html" style="text-decoration: none; color: #555; font-weight: 500;">Home Decor</a>
-        </div>
+        <!-- User Actions & Cart -->
+        <div class="header-actions">
+            <div class="action-item" onclick="navigateTo('/account', 'pages/account.html', 'My Account')">
+                <i class="fa-regular fa-user"></i>
+                <div class="action-text">
+                    <small>Hello, Guest</small>
+                    <span>Sign In</span>
+                </div>
+            </div>
 
-        <div class="header-actions" style="display: flex; gap: 15px; align-items: center;">
-            <input type="text" placeholder="Search products..." style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; outline: none;">
-            <a href="pages/checkout.html" style="text-decoration: none; background: #000; color: #fff; padding: 6px 14px; border-radius: 4px; font-size: 14px;">Cart (0)</a>
+            <div class="action-item" onclick="navigateTo('/wishlist', 'pages/wishlist.html', 'Wishlist')">
+                <i class="fa-regular fa-heart"></i>
+                <span class="badge-count" id="wishlist-count">0</span>
+                <span class="action-text-hide">Wishlist</span>
+            </div>
+
+            <div class="action-item cart-action" onclick="navigateTo('/cart', 'pages/cart.html', 'Cart')">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span class="cart-badge" id="cart-count">0</span>
+                <span class="action-text-hide">Cart</span>
+            </div>
         </div>
-    </nav>
+    </div>
 </header>
+
+<!-- Category Navigation Bar -->
+<nav class="nav-bar" id="main-nav">
+    <!-- ডাইনামিক রুটগুলো config.json থেকে এখানে লোড হবে -->
+</nav>
+
+<style>
+    /* Top Utility Bar Styles */
+    .top-bar { background: #0f172a; color: #94a3b8; font-size: 0.8rem; padding: 6px 5%; border-bottom: 1px solid #1e293b; }
+    .top-bar-content { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+    .top-bar-links { display: flex; gap: 15px; }
+    .top-bar-links a { color: #94a3b8; text-decoration: none; cursor: pointer; transition: color 0.2s; }
+    .top-bar-links a:hover { color: #38bdf8; }
+
+    /* Main Header Styles */
+    .main-header { background: #ffffff; padding: 12px 5%; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .header-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    
+    .logo { font-size: 1.6rem; font-weight: 800; color: #0284c7; text-decoration: none; cursor: pointer; white-space: nowrap; }
+    .logo span { color: #0f172a; }
+
+    /* Search Bar Design */
+    .header-search-bar { flex: 1; max-width: 600px; display: flex; align-items: center; background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; overflow: hidden; transition: border-color 0.2s; }
+    .header-search-bar:focus-within { border-color: #0284c7; }
+    .search-category-select { border: none; background: #f1f5f9; padding: 10px 12px; font-size: 0.85rem; color: #475569; outline: none; border-right: 1px solid #cbd5e1; cursor: pointer; }
+    .header-search-bar input { flex: 1; border: none; background: transparent; padding: 10px 15px; outline: none; font-size: 0.9rem; color: #1e293b; }
+    .search-btn { background: #0284c7; color: white; border: none; padding: 0 18px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+    .search-btn:hover { background: #0369a1; }
+
+    /* Actions & Icons */
+    .header-actions { display: flex; align-items: center; gap: 20px; }
+    .action-item { display: flex; align-items: center; gap: 8px; cursor: pointer; position: relative; color: #334155; text-decoration: none; }
+    .action-item i { font-size: 1.3rem; color: #0f172a; }
+    .action-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .action-text small { font-size: 0.7rem; color: #64748b; }
+    .action-text span { font-size: 0.85rem; font-weight: 700; color: #0f172a; }
+    
+    .badge-count, .cart-badge { position: absolute; top: -6px; left: 12px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: bold; padding: 1px 5px; border-radius: 50%; }
+
+    /* Navigation Bar */
+    .nav-bar { background: #0f172a; padding: 0 5%; display: flex; gap: 25px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+    .nav-bar::-webkit-scrollbar { display: none; }
+    .nav-bar a { color: #cbd5e1; text-decoration: none; padding: 12px 5px; font-size: 0.9rem; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s ease; }
+    .nav-bar a:hover, .nav-bar a.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+
+    /* Responsive adjustments */
+    @media (max-width: 850px) {
+        .top-bar { display: none; }
+        .action-text-hide, .action-text { display: none; }
+        .header-search-bar { max-width: none; }
+    }
+    @media (max-width: 550px) {
+        .search-category-select { display: none; }
+    }
+</style>
+
+<script>
+    function triggerSearch() {
+        const input = document.getElementById('search-input');
+        const category = document.getElementById('search-category').value;
+        const query = input.value.trim();
+        if (query) {
+            navigateTo(`/search?q=${encodeURIComponent(query)}&cat=${category}`, 'pages/search.html', 'Search Results');
+        }
+    }
+</script>
