@@ -1,6 +1,6 @@
 /**
  * Inaaya's Mart - Centralized URL & Routing Settings
- * Handles SEO-friendly WordPress-style trailing slashes, products, and dynamic SPA navigation.
+ * Handles SEO-friendly WordPress-style trailing slashes, products, and Parent/Child Category hierarchy.
  */
 
 class StoreRouter {
@@ -21,26 +21,25 @@ class StoreRouter {
         }
     }
 
-    // Convert file path to clean SEO-friendly URL with trailing slash (e.g., 'pages/pet-care.html' -> '/pet-care/')
+    // Convert file path to clean SEO-friendly URL with trailing slash
     getCleanUrlPath(filePath) {
         if (!filePath) return '/';
         let clean = filePath.replace('pages/', '').replace('.html', '');
         return clean === 'home' ? '/' : `/${clean}/`;
     }
 
-    // Normalize path by removing or ensuring trailing slashes for accurate matching
+    // Normalize path by removing or ensuring trailing slashes
     normalizePath(path) {
         if (!path) return '/';
-        // Remove trailing slash for internal comparison, except for root
         let trimmed = path !== '/' ? path.replace(/\/$/, "") : path;
         return trimmed;
     }
 
-    // Resolve current path to corresponding HTML file and handle SEO/Dynamic Slugs (Products, Categories)
+    // Resolve current path to corresponding HTML file and handle Parent/Child Categories & Products
     resolveRoute(currentPath) {
         const normalizedCurrent = this.normalizePath(currentPath);
 
-        // 1. Match against static storefront routes from config
+        // 1. Match static storefront routes from config
         let targetRoute = this.routes.find(r => {
             let routeClean = this.normalizePath(this.getCleanUrlPath(r.path));
             return routeClean === normalizedCurrent;
@@ -59,29 +58,37 @@ class StoreRouter {
             return { htmlPath: 'pages/home.html', title: 'Home', type: 'home' };
         }
 
-        // 3. SEO-Friendly Dynamic Routes for E-commerce (e.g., /product/item-name/ or /category/name/)
+        // 3. SEO-Friendly Dynamic Routes (Products & Parent/Child Categories)
         const segments = normalizedCurrent.split('/').filter(Boolean);
 
-        if (segments.length === 2) {
-            const [type, slug] = segments;
-            if (type === 'product') {
+        if (segments.length > 0) {
+            const firstSegment = segments[0];
+
+            // Product Detail Route: /product/item-slug/
+            if (firstSegment === 'product' && segments.length === 2) {
                 return {
                     htmlPath: 'pages/product-detail.html',
                     title: 'Product Details',
                     type: 'product',
-                    slug: slug
+                    slug: segments[1]
                 };
-            } else if (type === 'category') {
+            }
+
+            // Parent & Child Category Route: /category/parent/ or /category/parent/child/
+            if (firstSegment === 'category' && segments.length >= 2) {
+                const categorySlugs = segments.slice(1); // Extracts all nested category levels
                 return {
                     htmlPath: 'pages/category.html',
                     title: 'Category',
                     type: 'category',
-                    slug: slug
+                    slugs: categorySlugs, // e.g., ['electronics', 'smartphones']
+                    parent: categorySlugs.length > 1 ? categorySlugs[categorySlugs.length - 2] : null,
+                    current: categorySlugs[categorySlugs.length - 1]
                 };
             }
         }
 
-        // 4. Fallback for other standard pages
+        // 4. Fallback for other pages
         return {
             htmlPath: `pages${normalizedCurrent}.html`,
             title: 'Store',
