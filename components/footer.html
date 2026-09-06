@@ -1,36 +1,134 @@
-<footer class="site-footer" style="background: #1a1a1a; color: #ccc; padding: 40px 20px 20px; font-size: 14px;">
-    <div class="footer-container" style="max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 30px; margin-bottom: 30px;">
-        
-        <div>
-            <h3 style="color: #fff; margin-bottom: 15px; font-size: 16px;">Inaaya's Mart</h3>
-            <p style="line-height: 1.5; color: #999;">Your trusted destination for premium lifestyle, pet care, and home decor essentials worldwide.</p>
+<footer class="main-footer">
+    <!-- Top Newsletter Section -->
+    <div class="footer-newsletter">
+        <div class="newsletter-content">
+            <div class="newsletter-text">
+                <i class="fa-solid fa-envelope-open-text"></i>
+                <div>
+                    <h4>Subscribe to Inaaya's Mart</h4>
+                    <p>Get the latest global trends and exclusive offers directly to your inbox.</p>
+                </div>
+            </div>
+            <div class="newsletter-form">
+                <input type="email" id="newsletter-email" placeholder="Enter your email address...">
+                <button onclick="subscribeNewsletter()">Subscribe</button>
+            </div>
         </div>
-
-        <div>
-            <h3 style="color: #fff; margin-bottom: 15px; font-size: 16px;">Quick Links</h3>
-            <ul style="list-style: none; padding: 0; line-height: 2;">
-                <li><a href="/" style="color: #ccc; text-decoration: none;">Home</a></li>
-                <li><a href="pages/pet-care.html" style="color: #ccc; text-decoration: none;">Pet Care</a></li>
-                <li><a href="pages/home-decor.html" style="color: #ccc; text-decoration: none;">Home Decor</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 style="color: #fff; margin-bottom: 15px; font-size: 16px;">Customer Support</h3>
-            <ul style="list-style: none; padding: 0; line-height: 2;">
-                <li><a href="pages/privacy.html" style="color: #ccc; text-decoration: none;">Privacy Policy</a></li>
-                <li><a href="pages/checkout.html" style="color: #ccc; text-decoration: none;">Checkout</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 style="color: #fff; margin-bottom: 15px; font-size: 16px;">Secure Payments</h3>
-            <p style="color: #999; line-height: 1.5;">Powered by Stripe & Cloudflare Security.</p>
-        </div>
-
     </div>
 
-    <div style="text-align: center; border-top: 1px solid #333; padding-top: 20px; color: #777; font-size: 13px;">
-        &copy; 2026 Inaaya's Mart. All rights reserved.
+    <!-- Main Footer Grid Links -->
+    <div class="footer-container">
+        <div class="footer-col">
+            <h3>Customer Care</h3>
+            <ul>
+                <li><a onclick="navigateTo('/help', 'pages/help.html', 'Help Center')">Help Center</a></li>
+                <li><a onclick="navigateTo('/track-order', 'pages/track-order.html', 'Track Order')">Track Your Order</a></li>
+                <li><a onclick="navigateTo('/returns', 'pages/returns.html', 'Returns & Refunds')">Returns & Exchanges</a></li>
+                <li><a onclick="navigateTo('/shipping', 'pages/shipping.html', 'Shipping Info')">Global Shipping Info</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-col">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a onclick="navigateTo('/about', 'pages/about.html', 'About Us')">About Us</a></li>
+                <li><a onclick="navigateTo('/shop', 'pages/shop.html', 'All Products')">All Products</a></li>
+                <li><a onclick="navigateTo('/privacy', 'pages/privacy.html', 'Privacy Policy')">Privacy Policy</a></li>
+                <li><a onclick="navigateTo('/terms', 'pages/terms.html', 'Terms & Conditions')">Terms & Conditions</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-col">
+            <h3>Secure Payments</h3>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 12px;">We accept safe and encrypted transactions worldwide via secure payment gateways.</p>
+            <div class="payment-icons">
+                <i class="fa-brands fa-cc-visa" title="Visa"></i>
+                <i class="fa-brands fa-cc-mastercard" title="Mastercard"></i>
+                <i class="fa-brands fa-cc-paypal" title="PayPal"></i>
+                <i class="fa-brands fa-cc-apple-pay" title="Apple Pay"></i>
+            </div>
+        </div>
+
+        <div class="footer-col">
+            <h3>Connect With Us</h3>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 12px;">Support 24/7: support@inaayasmart.com</p>
+            <div class="social-links">
+                <a href="#" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
+                <a href="#" target="_blank"><i class="fa-brands fa-instagram"></i></a>
+                <a href="#" target="_blank"><i class="fa-brands fa-twitter"></i></a>
+                <a href="#" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Copyright Bar -->
+    <div class="footer-bottom">
+        <div class="footer-bottom-content">
+            <p>&copy; 2026 Inaaya's Mart. All Rights Reserved. Designed for Global E-Commerce.</p>
+            <div class="footer-bottom-links">
+                <a onclick="navigateTo('/privacy', 'pages/privacy.html', 'Privacy Policy')">Privacy</a>
+                <span>&bull;</span>
+                <a onclick="navigateTo('/terms', 'pages/terms.html', 'Terms')">Terms</a>
+            </div>
+        </div>
     </div>
 </footer>
+
+<style>
+    /* Footer Main Styles */
+    .main-footer { background: #0f172a; color: #f8fafc; margin-top: auto; font-family: inherit; }
+    
+    /* Newsletter Section */
+    .footer-newsletter { background: #1e293b; padding: 25px 5%; border-bottom: 1px solid #334155; }
+    .newsletter-content { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .newsletter-text { display: flex; align-items: center; gap: 15px; }
+    .newsletter-text i { font-size: 2rem; color: #38bdf8; }
+    .newsletter-text h4 { font-size: 1.1rem; color: #fff; margin-bottom: 3px; }
+    .newsletter-text p { font-size: 0.85rem; color: #94a3b8; }
+    
+    .newsletter-form { display: flex; gap: 10px; width: 100%; max-width: 400px; }
+    .newsletter-form input { flex: 1; padding: 10px 15px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; outline: none; font-size: 0.9rem; }
+    .newsletter-form input:focus { border-color: #38bdf8; }
+    .newsletter-form button { background: #0284c7; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+    .newsletter-form button:hover { background: #0369a1; }
+
+    /* Footer Grid Links */
+    .footer-container { max-width: 1200px; margin: 0 auto; padding: 40px 5%; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 30px; }
+    .footer-col h3 { font-size: 1rem; color: #fff; margin-bottom: 18px; position: relative; padding-bottom: 8px; }
+    .footer-col h3::after { content: ''; position: absolute; left: 0; bottom: 0; width: 35px; height: 2px; background: #0284c7; }
+    .footer-col ul { list-style: none; padding: 0; margin: 0; }
+    .footer-col ul li { margin-bottom: 10px; }
+    .footer-col ul li a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; cursor: pointer; transition: color 0.2s; }
+    .footer-col ul li a:hover { color: #38bdf8; padding-left: 4px; }
+
+    /* Payment & Social Icons */
+    .payment-icons { display: flex; gap: 12px; font-size: 1.8rem; color: #cbd5e1; }
+    .social-links { display: flex; gap: 12px; margin-top: 10px; }
+    .social-links a { display: inline-flex; justify-content: center; align-items: center; width: 36px; height: 36px; background: #1e293b; color: #cbd5e1; border-radius: 50%; text-decoration: none; transition: all 0.2s; }
+    .social-links a:hover { background: #0284c7; color: #fff; }
+
+    /* Bottom Bar */
+    .footer-bottom { background: #090d16; padding: 15px 5%; border-top: 1px solid #1e293b; font-size: 0.85rem; color: #64748b; }
+    .footer-bottom-content { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .footer-bottom-links { display: flex; gap: 10px; align-items: center; }
+    .footer-bottom-links a { color: #94a3b8; text-decoration: none; cursor: pointer; }
+    .footer-bottom-links a:hover { color: #38bdf8; }
+
+    @media (max-width: 768px) {
+        .newsletter-content { flex-direction: column; align-items: flex-start; }
+        .newsletter-form { max-width: 100%; }
+        .footer-bottom-content { flex-direction: column; text-align: center; }
+    }
+</style>
+
+<script>
+    function subscribeNewsletter() {
+        const email = document.getElementById('newsletter-email').value.trim();
+        if (email && email.includes('@')) {
+            alert('Thank you for subscribing to Inaaya\'s Mart!');
+            document.getElementById('newsletter-email').value = '';
+        } else {
+            alert('Please enter a valid email address.');
+        }
+    }
+</script>
