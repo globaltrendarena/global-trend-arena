@@ -22,100 +22,65 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background: #f8fafc; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* Header Optimization */
-        header { background: #fff; padding: 12px 5%; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-        .logo { font-size: 1.5rem; font-weight: 700; color: #0284c7; text-decoration: none; cursor: pointer; }
-        .logo span { color: #0f172a; }
-        .header-actions { display: flex; align-items: center; gap: 15px; }
-        .search-box { display: flex; align-items: center; background: #f1f5f9; padding: 6px 12px; border-radius: 20px; border: 1px solid #cbd5e1; }
-        .search-box input { border: none; background: transparent; outline: none; padding-left: 8px; font-size: 0.85rem; color: #334155; }
-        .cart-btn { position: relative; cursor: pointer; font-size: 1.2rem; color: #334155; }
-        .cart-badge { position: absolute; top: -8px; right: -10px; background: #ef4444; color: white; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 50%; }
-
-        /* Navigation Bar */
-        .nav-bar { background: #0f172a; padding: 0 5%; display: flex; gap: 20px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
-        .nav-bar::-webkit-scrollbar { display: none; }
-        .nav-bar a { color: #94a3b8; text-decoration: none; padding: 12px 5px; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s ease; }
-        .nav-bar a:hover, .nav-bar a.active { color: #38bdf8; border-bottom-color: #38bdf8; }
-
         /* App Root Container */
         #app-root { max-width: 1200px; margin: 25px auto; padding: 0 15px; min-height: 65vh; width: 100%; flex: 1; }
-
-        /* Footer */
-        footer { background: #0f172a; color: #94a3b8; padding: 40px 5% 20px; margin-top: auto; font-size: 0.9rem; }
-        .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
-        .footer-grid h4 { color: #fff; margin-bottom: 15px; }
-        .footer-bottom { text-align: center; margin-top: 30px; border-top: 1px solid #334155; padding-top: 20px; font-size: 0.8rem; }
-
-        @media (max-width: 640px) {
-            .search-box { display: none; }
-        }
+        .loading-state { text-align: center; padding: 60px 20px; }
+        .loading-state i { font-size: 2rem; color: #0284c7; }
+        .loading-state p { margin-top: 15px; color: #64748b; font-weight: 500; }
     </style>
 </head>
 <body>
 
-    <header>
-        <a onclick="navigateTo('/', 'pages/home.html', 'Home')" class="logo">Inaaya's <span>Mart</span></a>
-        
-        <div class="header-actions">
-            <div class="search-box">
-                <i class="fa-solid fa-magnifying-glass" style="color:#94a3b8;"></i>
-                <input type="text" id="search-input" placeholder="Search products..." onkeypress="handleSearch(event)">
-            </div>
-            <div class="cart-btn" onclick="navigateTo('/checkout', 'pages/checkout.html', 'Checkout')">
-                <i class="fa-solid fa-cart-shopping"></i>
-                <span class="cart-badge" id="cart-count">0</span>
-            </div>
-        </div>
-    </header>
+    <!-- হেডার কম্পোনেন্ট ডায়নামিকালি এখানে লোড হবে -->
+    <div id="header-container"></div>
 
-    <nav class="nav-bar" id="main-nav"></nav>
-
+    <!-- মূল পেজের কনটেন্ট এখানে লোড হবে -->
     <main id="app-root">
-        <div style="text-align:center; padding: 60px 20px;">
-            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#0284c7;"></i>
-            <p style="margin-top:15px; color:#64748b; font-weight:500;">Loading Inaaya's Mart Environment...</p>
+        <div class="loading-state">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <p>Loading Inaaya's Mart Environment...</p>
         </div>
     </main>
 
-    <footer>
-        <div class="footer-grid">
-            <div>
-                <h4>Customer Care</h4>
-                <p>US & Global Support 24/7</p>
-                <p style="margin-top:5px;">support@inaayasmart.com</p>
-            </div>
-            <div>
-                <h4>Inaaya's Mart</h4>
-                <p>High-Quality Global Trends</p>
-            </div>
-            <div>
-                <h4>Secure Checkout</h4>
-                <p>Encrypted API & SSL Gateways</p>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            &copy; 2026 Inaaya's Mart. All Rights Reserved.
-        </div>
-    </footer>
+    <!-- ফুটার কম্পোনেন্ট ডায়নামিকালি এখানে লোড হবে -->
+    <div id="footer-container"></div>
 
     <script>
         let storeConfig = null;
 
-        // Path to Clean URL mapping helper
+        // কম্পোনেন্ট ফেচ করে ইনজেক্ট করার ফাংশন
+        async function loadComponent(containerId, filePath) {
+            try {
+                const response = await fetch(filePath);
+                if (response.ok) {
+                    document.getElementById(containerId).innerHTML = await response.text();
+                } else {
+                    console.error(`Failed to load component: ${filePath}`);
+                }
+            } catch (error) {
+                console.error(`Error loading ${filePath}:`, error);
+            }
+        }
+
+        // ওয়ার্ডপ্রেসের মতো ইউআরএলের শেষে ট্রেইলিং স্ল্যাশ (/) হ্যান্ডেল করা
         function getCleanUrlPath(filePath) {
             let clean = filePath.replace('pages/', '').replace('.html', '');
-            return clean === 'home' ? '/' : `/${clean}`;
+            return clean === 'home' ? '/' : `/${clean}/`;
         }
 
         async function initStore() {
             try {
+                // ১. আলাদা ফাইল থেকে হেডার ও ফুটার লোড করা
+                await loadComponent('header-container', 'components/header.html');
+                await loadComponent('footer-container', 'components/footer.html');
+
+                // ২. কনফিগ ফাইল থেকে নেভিগেশন মেনু তৈরি করা
                 const res = await fetch('config.json');
                 storeConfig = await res.json();
                 const nav = document.getElementById('main-nav');
-                nav.innerHTML = '';
-
-                if (storeConfig.storefront_routes && Array.isArray(storeConfig.storefront_routes)) {
+                
+                if (nav && storeConfig.storefront_routes && Array.isArray(storeConfig.storefront_routes)) {
+                    nav.innerHTML = '';
                     storeConfig.storefront_routes.filter(r => r.in_menu).forEach(route => {
                         const cleanUrl = getCleanUrlPath(route.path);
                         const a = document.createElement('a');
@@ -145,19 +110,24 @@
         }
 
         function handlePopState() {
-            const currentPath = window.location.pathname;
-            let targetRoute = storeConfig?.storefront_routes?.find(r => getCleanUrlPath(r.path) === currentPath);
+            const currentPath = window.location.pathname.replace(/\/$/, "");
+            let targetRoute = storeConfig?.storefront_routes?.find(r => {
+                let routeClean = getCleanUrlPath(r.path).replace(/\/$/, "");
+                return routeClean === currentPath || (currentPath === "" && routeClean === "");
+            });
             
-            let htmlPath = targetRoute ? targetRoute.path : (currentPath === '/' ? 'pages/home.html' : `pages${currentPath}.html`);
+            let htmlPath = targetRoute ? targetRoute.path : (window.location.pathname === '/' ? 'pages/home.html' : `pages${window.location.pathname.replace(/\//g, '')}.html`);
             let title = targetRoute ? targetRoute.title : 'Store';
 
-            setActiveNav(currentPath);
+            setActiveNav(window.location.pathname);
             loadPage(htmlPath, title);
         }
 
         function setActiveNav(cleanUrl) {
+            const normalizedUrl = cleanUrl.replace(/\/$/, "") || "/";
             document.querySelectorAll('#main-nav a').forEach(el => {
-                if (el.dataset.path === cleanUrl || (cleanUrl === '/' && (el.dataset.path === '/home' || el.dataset.path === '/'))) {
+                let elPath = el.dataset.path.replace(/\/$/, "") || "/";
+                if (elPath === normalizedUrl || (normalizedUrl === "/" && (elPath === "/home" || elPath === "/"))) {
                     el.classList.add('active');
                 } else {
                     el.classList.remove('active');
@@ -178,6 +148,7 @@
                     document.title = `${title} - Inaaya's Mart`;
                 }
 
+                // পেজের ভেতরের স্ক্রিপ্টগুলো এক্সিকিউট করার ব্যবস্থা
                 root.querySelectorAll('script').forEach(oldScript => {
                     const newScript = document.createElement('script');
                     if (oldScript.src) {
@@ -204,7 +175,7 @@
             if (e.key === 'Enter') {
                 const query = e.target.value.trim();
                 if (query) {
-                    navigateTo(`/search?q=${encodeURIComponent(query)}`, 'pages/search.html', 'Search');
+                    navigateTo(`/search/?q=${encodeURIComponent(query)}`, 'pages/search.html', 'Search');
                 }
             }
         }
