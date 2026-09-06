@@ -62,7 +62,7 @@
                 <i class="fa-solid fa-magnifying-glass" style="color:#94a3b8;"></i>
                 <input type="text" id="search-input" placeholder="Search products..." onkeypress="handleSearch(event)">
             </div>
-            <div class="cart-btn" onclick="navigateTo('/cart', 'pages/cart.html', 'Cart')">
+            <div class="cart-btn" onclick="navigateTo('/checkout', 'pages/checkout.html', 'Checkout')">
                 <i class="fa-solid fa-cart-shopping"></i>
                 <span class="cart-badge" id="cart-count">0</span>
             </div>
@@ -157,7 +157,7 @@
 
         function setActiveNav(cleanUrl) {
             document.querySelectorAll('#main-nav a').forEach(el => {
-                if (el.dataset.path === cleanUrl || (cleanUrl === '/' && el.dataset.path === '/home')) {
+                if (el.dataset.path === cleanUrl || (cleanUrl === '/' && (el.dataset.path === '/home' || el.dataset.path === '/'))) {
                     el.classList.add('active');
                 } else {
                     el.classList.remove('active');
