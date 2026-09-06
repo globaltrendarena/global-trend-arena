@@ -19,7 +19,7 @@
         { "id": "home-decor", "title": "Home Decor", "path": "pages/home-decor.html", "in_menu": true },
         { "id": "drip-calculator", "title": "DRIP Reinvestment Calculator", "path": "pages/drip-calculator.html", "in_menu": true },
         { "id": "checkout", "title": "Checkout", "path": "pages/checkout.html", "in_menu": false },
-        { "id": "privacy", "title": "Privacy Policy", "path": "pages/privacy.html", "in_menu": false }
+        { "id": "privacy", "title": "Privacy Policy", "path": "pages/privacy-policy.html", "in_menu": false }
     ],
     "admin_modules": [
         { "id": "analytics", "title": "High-CPC Analytics", "path": "admin-modules/analytics.html" },
