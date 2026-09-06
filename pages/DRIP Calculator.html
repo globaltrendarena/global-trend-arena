@@ -1,0 +1,87 @@
+<style>
+    .drip-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        background: #ffffff;
+        padding: 25px;
+        border-radius: 16px;
+        border: 1px solid #eaedf0;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        max-width: 900px;
+        margin: auto;
+    }
+    .drip-section { flex: 1; min-width: 300px; }
+    .drip-input { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+    
+    @media (max-width: 480px) {
+        .drip-container { padding: 15px; }
+        .drip-section { min-width: 100%; }
+    }
+</style>
+
+<div class="drip-container">
+    <div style="width: 100%; text-align: center;"><h3 style="color: #002d72; margin: 0 0 20px 0;">DRIP Reinvestment Calculator</h3></div>
+    
+    <div class="drip-section">
+        <label style="font-weight: 600; font-size: 14px;">Initial Investment ($)</label>
+        <input type="number" id="drip-initial" class="drip-input" value="10000" oninput="calculateDRIP()">
+        
+        <label style="font-weight: 600; font-size: 14px;">Annual Dividend Yield (%)</label>
+        <input type="number" id="drip-yield" class="drip-input" value="4" oninput="calculateDRIP()">
+        
+        <label style="font-weight: 600; font-size: 14px;">Years to Reinvest</label>
+        <input type="number" id="drip-years" class="drip-input" value="10" oninput="calculateDRIP()">
+        
+        <div style="background: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #edf2f7; font-size: 14px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;"><span>Final Portfolio Value:</span> <b id="drip-total" style="color: #002d72;">$14,802</b></div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;"><span>Total Dividends Earned:</span> <b id="drip-div-earned" style="color: #00cc66;">$4,802</b></div>
+            <div style="display: flex; justify-content: space-between;"><span>Overall Return:</span> <b id="drip-roi">48.02%</b></div>
+        </div>
+    </div>
+
+    <div class="drip-section">
+        <div style="text-align: center; font-weight: 600; margin-bottom: 10px;">Portfolio Growth with DRIP</div>
+        <div style="height: 280px;"><canvas id="dripLineChart"></canvas></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let dripChart;
+    function calculateDRIP() {
+        const initial = parseFloat(document.getElementById('drip-initial').value) || 0;
+        const yieldRate = parseFloat(document.getElementById('drip-yield').value) / 100;
+        const years = parseInt(document.getElementById('drip-years').value) || 1;
+        
+        let totalValue = initial;
+        let totalDividends = 0;
+        let labels = ['Start'];
+        let data = [initial];
+
+        for (let i = 1; i <= years; i++) {
+            let annualDiv = totalValue * yieldRate;
+            totalDividends += annualDiv;
+            totalValue += annualDiv;
+            labels.push('Yr ' + i);
+            data.push(totalValue.toFixed(2));
+        }
+
+        document.getElementById('drip-total').innerText = '$' + Math.round(totalValue).toLocaleString();
+        document.getElementById('drip-div-earned').innerText = '$' + Math.round(totalDividends).toLocaleString();
+        document.getElementById('drip-roi').innerText = (((totalValue - initial) / initial) * 100).toFixed(2) + '%';
+
+        renderDRIPChart(labels, data);
+    }
+
+    function renderDRIPChart(labels, data) {
+        const ctx = document.getElementById('dripLineChart').getContext('2d');
+        if(dripChart) dripChart.destroy();
+        dripChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: [{ label: 'Portfolio Value', data: data, borderColor: '#00cc66', fill: true, backgroundColor: 'rgba(0, 204, 102, 0.05)', tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+    calculateDRIP();
+</script>
